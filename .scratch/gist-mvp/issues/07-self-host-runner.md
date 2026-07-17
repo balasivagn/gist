@@ -4,10 +4,10 @@
 
 **Blocked by:** 05 — Publish reports progressively.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] The engine exposes a documented command that accepts repository configuration and evidence.
-- [ ] The generated workflow runs on relevant pull-request events.
-- [ ] The workflow and configuration contain no Balanceflo-specific values.
-- [ ] A missing AI key selects deterministic output rather than failing.
-- [ ] The engine itself is not vendored into the consuming repository.
+- [x] The engine exposes a documented command that accepts repository configuration and evidence.
+- [x] The generated workflow runs on relevant pull-request events.
+- [x] The workflow and configuration contain no Balanceflo-specific values.
+- [x] A missing AI key selects deterministic output rather than failing.
+- [x] The engine itself is not vendored into the consuming repository.

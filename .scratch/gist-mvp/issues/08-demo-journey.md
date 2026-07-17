@@ -4,9 +4,9 @@
 
 **Blocked by:** 06 — Deliver the report from a pull request.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] Demo evidence contains several changes with at least one page needing attention.
-- [ ] The fixture produces a complete report without external credentials.
-- [ ] The documented demo path can be executed locally from a clean checkout.
-- [ ] The 375-pixel report communicates the change without developer terminology.
+- [x] Demo evidence contains several changes with at least one page needing attention.
+- [x] The fixture produces a complete report without external credentials.
+- [x] The documented demo path can be executed locally from a clean checkout.
+- [x] The 375-pixel report communicates the change without developer terminology.

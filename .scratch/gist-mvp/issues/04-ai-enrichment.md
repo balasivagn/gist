@@ -4,9 +4,9 @@
 
 **Blocked by:** 01 — Generate an understandable report from evidence; 03 — Explain global changes and degraded runs.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] Valid structured enrichment replaces deterministic copy and captions.
-- [ ] Missing credentials skips the AI call without failing the run.
-- [ ] API failure or invalid structured output falls back deterministically.
-- [ ] Slide routes must correspond to pages present in the evidence bundle.
+- [x] Valid structured enrichment replaces deterministic copy and captions.
+- [x] Missing credentials skips the AI call without failing the run.
+- [x] API failure or invalid structured output falls back deterministically.
+- [x] Slide routes must correspond to pages present in the evidence bundle.

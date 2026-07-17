@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "productionUrl": "https://example.com",
+  "preview": {
+    "provider": "cloudflare-pages"
+  },
+  "publish": {
+    "baseUrl": "https://gist.app"
+  },
+  "limits": {
+    "maxPages": 50,
+    "maxCaptureHeightPx": 12000
+  }
+}

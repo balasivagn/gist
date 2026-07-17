@@ -1,0 +1,18 @@
+{
+  "name": "@gist/review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gist": "bin/gist.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:report": "node --test test/report.test.mjs",
+    "typecheck": "node --check bin/gist.mjs && node --check src/report.mjs && node --check src/enrichment.mjs && node --check src/publisher.mjs && node --check src/webhook.mjs",
+    "build": "node bin/gist.mjs build --config demo/gist.config.json --evidence demo/evidence.json --out dist/demo"
+  }
+}

@@ -4,9 +4,9 @@
 
 **Blocked by:** 01 — Generate an understandable report from evidence.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] Each inspectable page exposes labelled before and after images.
-- [ ] A drag control reveals either image continuously and has a touch-sized target.
-- [ ] Tapping toggles between before and after as a fallback.
-- [ ] Keyboard and assistive-technology users can operate and understand the control.
+- [x] Each inspectable page exposes labelled before and after images.
+- [x] A drag control reveals either image continuously and has a touch-sized target.
+- [x] Tapping toggles between before and after as a fallback.
+- [x] Keyboard and assistive-technology users can operate and understand the control.

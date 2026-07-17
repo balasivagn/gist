@@ -4,10 +4,10 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** complete
 
-- [ ] A valid evidence bundle produces a complete semantic HTML report.
-- [ ] Counts and plain-language statuses are derived from evidence.
-- [ ] Changed pages and walkthrough slides are ordered worst-first.
-- [ ] The report preserves one reading order from phone to desktop.
-- [ ] Invalid evidence fails with an actionable validation error.
+- [x] A valid evidence bundle produces a complete semantic HTML report.
+- [x] Counts and plain-language statuses are derived from evidence.
+- [x] Changed pages and walkthrough slides are ordered worst-first.
+- [x] The report preserves one reading order from phone to desktop.
+- [x] Invalid evidence fails with an actionable validation error.

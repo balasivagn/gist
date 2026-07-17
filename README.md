@@ -8,7 +8,22 @@ walkthrough video, a before/after diff viewer, and high-level numbers
 (pages changed / unexpected / broken).
 
 This folder is a **portable spec + ticket pack** extracted from a planning session.
-It is self-contained — the specs stand alone.
+It is self-contained, and now includes an executable MVP of the report, publication,
+webhook, and self-host CLI seams described by the normalized spec.
+
+## Run the implementation
+
+Node.js 22 or newer is the only requirement; there are no runtime dependencies.
+
+```sh
+npm test
+npm run typecheck
+npm run build
+```
+
+The demo report is written to `dist/demo/index.html`. See
+[`demo/README.md`](demo/README.md) for the scenario. The normalized implementation spec
+and dependency-ordered ticket files live under [`.scratch/gist-mvp/`](.scratch/gist-mvp/).
 
 > **Where the engine actually lives:** the real QA engine that Gist reuses (capture, diff,
 > report, video, GitHub Actions, the R2 report portal) is in the separate **balanceflo-website**
