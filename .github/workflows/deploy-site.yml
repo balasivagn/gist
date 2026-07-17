@@ -1,0 +1,68 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [pivot-local-tool]
+    paths: ["site/**", ".github/workflows/deploy-site.yml"]
+  pull_request:
+    paths: ["site/**", ".github/workflows/deploy-site.yml"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: deploy-site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to gist.masalageek.com
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: site
+
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload preview version
+        id: preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: site
+          command: versions upload
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        env:
+          CMD_OUTPUT: ${{ steps.preview.outputs.command-output }}
+        with:
+          script: |
+            const out = process.env.CMD_OUTPUT || '';
+            const printed = out.match(/https:\/\/\S*workers\.dev/);
+            const versionId = out.match(/Worker Version ID:\s*([0-9a-f-]+)/);
+            const url = printed ? printed[0]
+              : versionId ? `https://${versionId[1].slice(0, 8)}-gist-site.ssn-bala.workers.dev`
+              : null;
+            const marker = '<!-- gist-site-preview -->';
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = url
+              ? `${marker}\n🔍 **Site preview:** ${url}\n\n_Deployed from ${sha}_`
+              : `${marker}\n⚠️ Preview upload ran but no preview URL was found — check the workflow logs.\n\n_Commit ${sha}_`;
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }
