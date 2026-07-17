@@ -233,5 +233,6 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
   log(
     `Totals: ${totals.changed} changed · ${totals.unexpected} unexpected · ${totals.broken} broken`,
   );
+  log("\nNext: run `/gist` in Claude Code to write the summary, then `gist ui` to review.");
   return evidence;
 }

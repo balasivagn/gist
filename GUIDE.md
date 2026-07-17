@@ -26,20 +26,14 @@ From the root of the website repo you want to review:
 gist init
 ```
 
-This does three things:
+This does everything needed to set up the project:
 
 1. Installs the headless browser Gist uses (a one-time ~download; only happens
    the first time).
 2. Writes a starter config at `.gist/config.json`.
-3. Installs the `/gist` skill into `.claude/skills/` so Claude Code can write
+3. Adds `.gist/` to your `.gitignore` (its output is local-only).
+4. Installs the `/gist` skill into `.claude/skills/` so Claude Code can write
    the walkthrough (Step 5).
-
-The `.gist/` folder is where all of Gist's output lives. Add it to your
-`.gitignore` — it's local-only:
-
-```sh
-echo ".gist/" >> .gitignore
-```
 
 ## Step 3 — Configure
 
@@ -118,7 +112,8 @@ run.
 gist ui
 ```
 
-Open http://127.0.0.1:4100. You'll see every PR, each run under it, the
+It opens http://127.0.0.1:4100 in your browser (use `gist ui --no-open` to
+skip that). You'll see every PR, each run under it, the
 plain-English summary, and a before / after / diff for every page. Share your
 screen with whoever approves the change — they read the summary, glance at the
 diffs, and say yes or "take a look at page X".

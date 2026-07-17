@@ -6,6 +6,7 @@
  * light and the "local, single command" promise intact.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
@@ -76,6 +77,23 @@ export interface UiOptions {
   cwd: string;
   port?: number;
   host?: string;
+  /** Open the URL in the default browser once the server is up (default true). */
+  open?: boolean;
+}
+
+/** Best-effort open a URL in the OS default browser; never throws. */
+function openBrowser(url: string): void {
+  let cmd = "xdg-open";
+  if (process.platform === "darwin") cmd = "open";
+  else if (process.platform === "win32") cmd = "cmd";
+  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  try {
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+    child.on("error", () => {});
+    child.unref();
+  } catch {
+    /* opening is a convenience — the printed URL is the fallback */
+  }
 }
 
 export async function startUi(opts: UiOptions): Promise<{ url: string; close: () => Promise<void> }> {
@@ -115,6 +133,7 @@ export async function startUi(opts: UiOptions): Promise<{ url: string; close: ()
 
   await new Promise<void>((resolve) => server.listen(port, host, resolve));
   const url = `http://${host}:${port}`;
+  if (opts.open !== false) openBrowser(url);
   return {
     url,
     close: () =>

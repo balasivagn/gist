@@ -29,7 +29,7 @@ const USAGE = `gist — approve website changes without reading code
 Usage:
   gist init                          install the browser, scaffold .gist/config.json, add the /gist skill
   gist run --pr <n> [options]        capture before/after screenshots, diff, write evidence
-  gist ui [--port <p>]               serve the local review UI over .gist/
+  gist ui [--port <p>] [--no-open]   serve the local review UI over .gist/ (opens the browser)
   gist skill install                 (re)install the /gist skill into .claude/skills/
 
 Options for run:
@@ -82,6 +82,7 @@ async function main(): Promise<void> {
       const { url } = await startUi({
         cwd,
         port: port ? Number(port) : undefined,
+        open: !process.argv.includes("--no-open"),
       });
       process.stdout.write(`Gist UI running at ${url}  (Ctrl+C to stop)\n`);
       return;

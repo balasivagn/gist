@@ -6,7 +6,8 @@
  */
 import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
-import { access } from "node:fs/promises";
+import { access, appendFile, readFile } from "node:fs/promises";
+import path from "node:path";
 import { promisify } from "node:util";
 import { chromium } from "playwright";
 import {
@@ -56,6 +57,27 @@ async function installChromium(log: (m: string) => void): Promise<void> {
   log("Chromium installed.");
 }
 
+/** Ensure `.gist/` is gitignored, so a run's screenshots never get committed. */
+async function ensureGitignore(
+  cwd: string,
+  log: (m: string) => void,
+): Promise<void> {
+  const file = path.join(cwd, ".gitignore");
+  let current = "";
+  try {
+    current = await readFile(file, "utf8");
+  } catch {
+    /* no .gitignore yet — we'll create it */
+  }
+  const ignored = current
+    .split(/\r?\n/)
+    .some((line) => line.trim().replace(/\/$/, "") === ".gist");
+  if (ignored) return;
+  const prefix = current === "" || current.endsWith("\n") ? "" : "\n";
+  await appendFile(file, `${prefix}.gist/\n`, "utf8");
+  log("Added .gist/ to .gitignore.");
+}
+
 export interface InitResult {
   installedBrowser: boolean;
   wroteConfig: boolean;
@@ -81,6 +103,8 @@ export async function runInit(
     log("Wrote starter .gist/config.json — edit productionUrl and routes.");
     wroteConfig = true;
   }
+
+  await ensureGitignore(cwd, log);
 
   return { installedBrowser, wroteConfig };
 }
