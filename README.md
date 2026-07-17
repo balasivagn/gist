@@ -13,19 +13,33 @@ webhook, and self-host CLI seams described by the normalized spec.
 
 ## Run the implementation
 
-Node.js 22 or newer is the only requirement; there are no runtime dependencies.
+Node.js 22 or newer. Install dependencies, then:
 
 ```sh
 npm test
 npm run typecheck
 npm run build
+npm start
 ```
 
-The demo report is written to `dist/demo/index.html`. See
-[`demo/README.md`](demo/README.md) for the scenario. The normalized implementation spec
-and dependency-ordered ticket files live under [`.scratch/gist-mvp/`](.scratch/gist-mvp/).
-To run a real Balanceflo pull request through capture, evidence import, and the local
-Gist UI, follow [`setup.md`](setup.md).
+The app is a **Next.js** console: PR list, multi-run history, and the React report surface.
+Jobs publish structured evidence to `POST /api/ingest/evidence` (Bearer `GIST_INGEST_TOKEN`).
+
+Local demo presentation JSON (no server):
+
+```sh
+npm run build:demo
+```
+
+See [`demo/README.md`](demo/README.md). For a real Balanceflo PR → capture → ingest → UI flow, follow [`setup.md`](setup.md).
+
+Required env for the server:
+
+- `GIST_INGEST_TOKEN` — ingest auth
+- `REPORT_ROOT` — filesystem store (default `.data/reports`)
+- `PUBLIC_BASE_URL` — public origin for returned report URLs
+- `ANTHROPIC_API_KEY` — required for complete evidence ingest (AI Scene Director); set `GIST_MOCK_SCENES=1` only for local tests/CLI without a key
+
 
 > **Where the engine actually lives:** the real QA engine that Gist reuses (capture, diff,
 > report, video, GitHub Actions, the R2 report portal) is in the separate **balanceflo-website**

@@ -8,7 +8,7 @@ import test from "node:test";
 
 const execFileAsync = promisify(execFile);
 
-test("a repository can install the small workflow and build a report without an AI key", async () => {
+test("a repository can install the small workflow and build presentation without an AI key", async () => {
   const root = await mkdtemp(join(tmpdir(), "gist-cli-"));
   const repository = join(root, "consumer");
   const evidencePath = join(root, "evidence.json");
@@ -19,28 +19,45 @@ test("a repository can install the small workflow and build a report without an 
     pullRequest: { number: 4, title: "Add signup", headSha: "abc1234" },
     pages: [
       { route: "/", title: "Home", status: "expected-change", diffRatio: 0.1 },
-      { route: "/about", title: "About", status: "pass", diffRatio: 0 }
-    ]
+      { route: "/about", title: "About", status: "pass", diffRatio: 0 },
+    ],
   };
   await writeFile(evidencePath, JSON.stringify(evidence), "utf8");
 
   await execFileAsync(process.execPath, ["bin/gist.mjs", "init", "--out", repository]);
-  await execFileAsync(process.execPath, ["bin/gist.mjs", "build", "--config", join(repository, "gist.config.json"), "--evidence", evidencePath, "--out", output], {
-    env: { PATH: process.env.PATH }
-  });
+  await execFileAsync(
+    process.execPath,
+    [
+      "bin/gist.mjs",
+      "build",
+      "--config",
+      join(repository, "gist.config.json"),
+      "--evidence",
+      evidencePath,
+      "--out",
+      output,
+    ],
+    { env: { ...process.env, PATH: process.env.PATH, GIST_MOCK_SCENES: "1" } },
+  );
 
   const workflow = await readFile(join(repository, ".github/workflows/gist.yml"), "utf8");
   const config = await readFile(join(repository, "gist.config.json"), "utf8");
-  const status = JSON.parse(await readFile(join(output, "status.json"), "utf8"));
-  const html = await readFile(join(output, "index.html"), "utf8");
+  const presentation = JSON.parse(await readFile(join(output, "presentation.json"), "utf8"));
   assert.deepEqual(
     {
       pullRequestTrigger: workflow.includes("pull_request:"),
       externalEngine: workflow.includes("npx @gist/review"),
       repoAgnostic: !config.toLowerCase().includes("balanceflo"),
-      deterministic: status.explanationSource,
-      report: html.includes("Home")
+      deterministic: presentation.explanationSource,
+      report: presentation.slides.some((page) => page.title === "Home") ||
+        presentation.primaryPages.some((page) => page.title === "Home"),
     },
-    { pullRequestTrigger: true, externalEngine: true, repoAgnostic: true, deterministic: "deterministic", report: true }
+    {
+      pullRequestTrigger: true,
+      externalEngine: true,
+      repoAgnostic: true,
+      deterministic: "ai",
+      report: true,
+    },
   );
 });

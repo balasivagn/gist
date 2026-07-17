@@ -1,25 +1,44 @@
 {
   "name": "@gist/review",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "files": [
+    "app/",
     "bin/",
+    "lib/",
     "src/",
+    "public/",
     "README.md"
   ],
   "type": "module",
   "bin": {
     "gist": "bin/gist.mjs",
-    "gist-import-balanceflo": "bin/import-balanceflo.mjs",
-    "gist-server": "bin/server.mjs"
+    "gist-import-balanceflo": "bin/import-balanceflo.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test",
-    "test:report": "node --test test/report.test.mjs",
-    "start": "node bin/server.mjs",
-    "typecheck": "node --check bin/gist.mjs && node --check bin/import-balanceflo.mjs && node --check bin/server.mjs && node --check src/balanceflo-import.mjs && node --check src/budgets.mjs && node --check src/hosted-service.mjs && node --check src/identity.mjs && node --check src/report.mjs && node --check src/enrichment.mjs && node --check src/ingest.mjs && node --check src/publisher.mjs && node --check src/webhook.mjs",
-    "build": "node bin/gist.mjs build --config demo/gist.config.json --evidence demo/evidence.json --out dist/demo"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "tsx --test test/*.test.ts test/*.test.mjs",
+    "test:report": "tsx --test test/presentation.test.ts",
+    "typecheck": "tsc --noEmit && node --check bin/gist.mjs && node --check bin/import-balanceflo.mjs && node --check src/balanceflo-import.mjs && node --check src/budgets.mjs && node --check src/identity.mjs && node --check src/report.mjs && node --check src/enrichment.mjs && node --check src/ingest.mjs && node --check src/publisher.mjs && node --check src/webhook.mjs",
+    "build:demo": "node bin/gist.mjs build --config demo/gist.config.json --evidence demo/evidence.json --out dist/demo"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.1",
+    "next": "^15.5.20",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.5",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/sharp": "^0.31.1",
+    "tsx": "^4.23.1",
+    "typescript": "5.9"
   }
 }

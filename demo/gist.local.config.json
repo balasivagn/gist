@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "productionUrl": "https://example.com",
+  "preview": {
+    "provider": "cloudflare-pages"
+  },
+  "publish": {
+    "baseUrl": "http://localhost:3000"
+  },
+  "limits": {
+    "maxPages": 50,
+    "maxCaptureHeightPx": 12000,
+    "maxArtifactBytes": 50000000
+  }
+}

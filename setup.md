@@ -11,7 +11,7 @@ This guide runs the Balanceflo capture/diff engine against a deployed pull-reque
 - Portable Gist evidence generation with embedded screenshots
 - The Gist summary, walkthrough, page ordering, and before/after controls
 
-The core local path does not require the hosted Gist ingest service. AI copy is optional; without a configured adapter, the deterministic explanation is used.
+The core local path does not require the hosted Gist ingest service. Complete evidence ingest on the Next.js host **requires** `ANTHROPIC_API_KEY` so the AI Scene Director can write walkthrough focus, zoom, and annotations. For credential-free demos and tests, set `GIST_MOCK_SCENES=1`.
 
 ## Prerequisites
 
@@ -100,51 +100,73 @@ node bin/import-balanceflo.mjs \
 
 The importer chooses the most concerning viewport for each page and embeds its production/preview PNGs as data URLs. The resulting report therefore remains portable.
 
-### 3. Build the Gist report
+### 3. Publish evidence into the Next.js app
 
-```sh
-node bin/gist.mjs build \
-  --config demo/gist.config.json \
-  --evidence "$GIST_LOCAL/evidence.json" \
-  --out "$GIST_LOCAL/report"
-```
-
-### 4. Serve and inspect it
-
-```sh
-python3 -m http.server 4173 --directory "$GIST_LOCAL/report"
-```
-
-Open <http://localhost:4173>. Stop the server with `Ctrl-C`.
-
-Review the report at a 375-pixel viewport as well as desktop. Check:
-
-- Does the headline communicate the verdict without code terminology?
-- Are pages needing attention listed first?
-- Do slideshow navigation and mobile swipe work?
-- Does the before/after slider reveal the correct screenshots?
-- Does the tap fallback switch fully between before and after?
-- Are unexpected changes distinguished from capture failures?
-
-## Evaluate the hosted service locally
-
-This exercises the same HTTP process deployed to Railway, without making any Railway changes.
-
-Choose a private token for this terminal session and start the service:
+Start the console (separate terminal):
 
 ```sh
 cd "$GIST_REPO"
 export GIST_INGEST_TOKEN="replace-with-a-long-random-local-token"
 export REPORT_ROOT="$GIST_REPO/.local/hosted-reports"
 export PUBLIC_BASE_URL="http://localhost:3000"
-npm start
+export ANTHROPIC_API_KEY="sk-ant-..."
+npm run dev
 ```
 
-In a second terminal, confirm the service is healthy:
+If Node fails Anthropic calls with `SELF_SIGNED_CERT_IN_CHAIN` (common with Cloudflare Gateway / WARP TLS inspection), export the Gateway CA and point Node at it before starting the server:
 
 ```sh
-curl --fail http://localhost:3000/health
+security find-certificate -a -c "Gateway CA - Cloudflare" -p > .local/certs/cloudflare-gateway-ca.pem
+export NODE_EXTRA_CA_CERTS="$PWD/.local/certs/cloudflare-gateway-ca.pem"
 ```
+
+Publish the imported evidence:
+
+```sh
+cd "$GIST_REPO"
+GIST_TOKEN="$GIST_INGEST_TOKEN" node bin/gist.mjs build \
+  --config demo/gist.local.config.json \
+  --evidence "$GIST_LOCAL/evidence.json" \
+  --out "$GIST_LOCAL/report" \
+  --publish
+```
+
+### 4. Inspect the React report
+
+Open the returned URL (or <http://localhost:3000>). Check:
+
+- The home page lists the pull request
+- `/pr/<owner>/<repo>/<n>` shows the latest run report
+- `/pr/<owner>/<repo>/<n>/runs` lists run history with summaries
+- Slideshow, before/after slider, and status labels read as plain English
+
+## Evaluate the hosted service locally
+
+This exercises the same Next.js process deployed to Railway.
+
+```sh
+cd "$GIST_REPO"
+export GIST_INGEST_TOKEN="replace-with-a-long-random-local-token"
+export REPORT_ROOT="$GIST_REPO/.local/hosted-reports"
+export PUBLIC_BASE_URL="http://localhost:3000"
+export ANTHROPIC_API_KEY="sk-ant-..."
+npm run build && npm start
+```
+
+Health check:
+
+```sh
+curl --fail http://localhost:3000/api/health
+```
+
+Ingest (structured evidence, not HTML):
+
+```text
+POST /api/ingest/building
+POST /api/ingest/evidence
+```
+
+Compatibility aliases: `POST /api/building`, `POST /api/evidence`.
 
 The production demo is currently hosted at:
 
@@ -152,7 +174,7 @@ The production demo is currently hosted at:
 https://web-production-024b4.up.railway.app
 ```
 
-Its stable report URL shape is:
+Stable report URL:
 
 ```text
 https://web-production-024b4.up.railway.app/pr/<owner>/<repository>/<pr-number>
@@ -183,7 +205,6 @@ GIST_INGEST_TOKEN="$(openssl rand -hex 32)"
 railway variables --service web --skip-deploys \
   --set REPORT_ROOT=/data/reports \
   --set PUBLIC_BASE_URL="$GIST_BASE_URL" \
-  --set MAX_INGEST_BYTES=60000000 \
   --set GIST_INGEST_TOKEN="$GIST_INGEST_TOKEN"
 
 printf %s "$GIST_INGEST_TOKEN" | \
@@ -193,11 +214,11 @@ gh variable set GIST_BASE_URL \
   --body "$GIST_BASE_URL"
 
 railway up --service web --ci
-curl --fail "$GIST_BASE_URL/health"
+curl --fail "$GIST_BASE_URL/api/health"
 unset GIST_INGEST_TOKEN
 ```
 
-The `/data` volume is required. `railway.json` configures the process and health check, while the Railway volume configuration keeps reports across deploys.
+The `/data` volume is required. `railway.json` runs `next build` / `next start` with health check `/api/health`.
 
 ## Evaluate the automatic PR experience
 

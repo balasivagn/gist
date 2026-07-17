@@ -1,10 +1,10 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { buildEnrichedReport } from "../src/enrichment.mjs";
-import { uploadReport } from "../src/ingest.mjs";
-import { enforceReportBudgets } from "../src/budgets.mjs";
+import { uploadEvidence } from "../src/ingest.mjs";
 
 function option(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build and publish Gist report
+      - name: Publish Gist evidence
         env:
           ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}
           GIST_TOKEN: \${{ secrets.GIST_TOKEN }}
@@ -41,7 +41,7 @@ const DEFAULT_CONFIG = {
   productionUrl: "https://example.com",
   preview: { provider: "cloudflare-pages" },
   publish: { baseUrl: "https://gist.app" },
-  limits: { maxPages: 50, maxCaptureHeightPx: 12000, maxArtifactBytes: 50000000 }
+  limits: { maxPages: 50, maxCaptureHeightPx: 12000, maxArtifactBytes: 50000000 },
 };
 
 async function initialize() {
@@ -53,10 +53,13 @@ async function initialize() {
 
 function validateConfig(config) {
   if (config?.version !== 1) throw new TypeError("config.version must be 1");
-  for (const [field, value] of [["productionUrl", config.productionUrl], ["publish.baseUrl", config.publish?.baseUrl]]) {
+  for (const [field, value] of [
+    ["productionUrl", config.productionUrl],
+    ["publish.baseUrl", config.publish?.baseUrl],
+  ]) {
     try {
       const url = new URL(value);
-      if (url.protocol !== "https:") throw new Error();
+      if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error();
     } catch {
       throw new TypeError(`${field} must be an HTTPS URL`);
     }
@@ -64,25 +67,35 @@ function validateConfig(config) {
 }
 
 async function build() {
-  const config = JSON.parse(await readFile(resolve(option("config")), "utf8"));
+  const configPath = resolve(option("config"));
+  const evidencePath = resolve(option("evidence"));
+  const config = JSON.parse(await readFile(configPath, "utf8"));
   validateConfig(config);
-  const evidence = JSON.parse(await readFile(resolve(option("evidence")), "utf8"));
+  const evidence = JSON.parse(await readFile(evidencePath, "utf8"));
   const output = resolve(option("out"));
-  const report = await buildEnrichedReport(evidence);
-  enforceReportBudgets({ evidence, html: report.html, limits: config.limits });
-  await write(join(output, "index.html"), report.html);
-  await write(join(output, "status.json"), `${JSON.stringify(report.status, null, 2)}\n`);
+
   if (process.argv.includes("--publish")) {
-    const publication = await uploadReport({
+    const publication = await uploadEvidence({
       baseUrl: config.publish.baseUrl,
       token: process.env.GIST_TOKEN,
-      html: report.html,
-      status: report.status
+      evidence,
     });
     process.stdout.write(`${publication.url}\n`);
     return;
   }
-  process.stdout.write(`${output}\n`);
+
+  const script = fileURLToPath(new URL("./build-presentation.mts", import.meta.url));
+  const result = spawnSync(
+    process.execPath,
+    ["--import", "tsx", script, configPath, evidencePath, output],
+    { encoding: "utf8" },
+  );
+  if (result.status !== 0) {
+    process.stderr.write(result.stderr || result.stdout || "build failed\n");
+    process.exitCode = result.status || 1;
+    return;
+  }
+  process.stdout.write(result.stdout);
 }
 
 const command = process.argv[2];

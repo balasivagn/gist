@@ -1,21 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { uploadReport } from "../src/ingest.mjs";
+import { uploadEvidence } from "../src/ingest.mjs";
 
-test("self-host publication uploads the report to the configured Gist ingest boundary", async () => {
+test("self-host publication uploads structured evidence to the Gist ingest boundary", async () => {
   const requests = [];
   const fetchImpl = async (url, options) => {
     requests.push({ url, options });
-    return { ok: true, status: 201, async json() { return { url: "https://gist.app/pr/acme/site/4" }; } };
+    return {
+      ok: true,
+      status: 201,
+      async json() {
+        return { url: "https://gist.app/pr/acme/site/4", runId: "abc" };
+      },
+    };
   };
 
-  const result = await uploadReport({
+  const evidence = {
+    version: 1,
+    repository: "acme/site",
+    pullRequest: { number: 4, title: "Add signup", headSha: "abc1234" },
+    pages: [{ route: "/", title: "Home", status: "expected-change", diffRatio: 0.1 }],
+  };
+
+  const result = await uploadEvidence({
     baseUrl: "https://gist.app/",
     token: "repo-token",
-    html: "<html>report</html>",
-    status: { state: "complete", repository: "acme/site", pullRequest: 4 },
-    fetchImpl
+    evidence,
+    fetchImpl,
   });
 
   const payload = JSON.parse(requests[0].options.body);
@@ -24,17 +36,15 @@ test("self-host publication uploads the report to the configured Gist ingest bou
       endpoint: requests[0].url,
       authorization: requests[0].options.headers.authorization,
       contentType: requests[0].options.headers["content-type"],
-      repository: payload.status.repository,
-      html: payload.html,
-      reportUrl: result.url
+      repository: payload.evidence.repository,
+      reportUrl: result.url,
     },
     {
-      endpoint: "https://gist.app/api/ingest",
+      endpoint: "https://gist.app/api/ingest/evidence",
       authorization: "Bearer repo-token",
       contentType: "application/json",
       repository: "acme/site",
-      html: "<html>report</html>",
-      reportUrl: "https://gist.app/pr/acme/site/4"
-    }
+      reportUrl: "https://gist.app/pr/acme/site/4",
+    },
   );
 });
