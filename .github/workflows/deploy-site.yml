@@ -25,6 +25,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4.112.0"
           workingDirectory: site
 
   preview:
@@ -37,6 +38,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: "4.112.0"
           workingDirectory: site
           command: versions upload
       - name: Comment preview URL on PR
