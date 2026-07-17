@@ -8,6 +8,7 @@
 import { chromium, type Browser } from "playwright";
 import { captureWithRetry, InfraCaptureError } from "./capture.js";
 import { diffScreenshots, type PageStatus } from "./diff.js";
+import { preflight } from "./preflight.js";
 import { resolveTargets } from "./resolve.js";
 import {
   readConfig,
@@ -61,6 +62,17 @@ export interface RunOptions {
 
 export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
   const log = opts.log ?? console.log;
+
+  const pf = await preflight({
+    cwd: opts.cwd,
+    headOverridden: Boolean(opts.headUrlOverride),
+  });
+  for (const w of pf.warnings) log(`⚠ ${w}`);
+  if (!pf.ok) {
+    const bullets = pf.errors.map((e) => `  • ${e}`).join("\n");
+    throw new Error(`Can't run yet:\n${bullets}`);
+  }
+
   const config: GistConfig = await readConfig(opts.cwd);
 
   const targets = await resolveTargets({
