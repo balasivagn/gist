@@ -84,45 +84,72 @@ export async function capture(
     return { buffer: null, truncated: false };
   }
 
-  await page.addStyleTag({
-    content:
-      "*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }",
-  });
+  // NOTE: we do NOT globally disable animations here. Doing so freezes
+  // reveal-on-scroll content (opacity:0 → visible) at its hidden initial state,
+  // which is the classic "blank/black below the fold" bug — the section exists
+  // in layout but never becomes visible, and two pages that both fail this way
+  // come out byte-identical (a false "no change"). Animations are frozen only
+  // at the very end, once content has actually revealed, for a crisp frame.
 
-  // Bounded scroll to trigger lazy-loaded/reveal-on-scroll content: capped by
-  // step count and by height, and stops early once height stabilizes.
+  // Scroll to the bottom to trigger lazy-loaded/reveal-on-scroll content. The
+  // loop is driven by the live scrollHeight (which grows as content loads) and
+  // is bounded only by step count and the height cap — never stopped early by a
+  // "height looks stable" heuristic, because early sections can be static while
+  // later ones still need scrolling to reveal.
   const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
-  let lastHeight = -1;
-  let stableSteps = 0;
   let truncated = false;
+  let y = 0;
   for (let step = 0; step < CAPTURE_LIMITS.maxScrollSteps; step++) {
-    const height = await page.evaluate(() => document.body.scrollHeight);
-    if (height === lastHeight) {
-      if (++stableSteps >= CAPTURE_LIMITS.stableStepsToStop) break;
-    } else {
-      stableSteps = 0;
-    }
-    lastHeight = height;
-    const y = step * viewport.height;
     if (y >= CAPTURE_LIMITS.maxCaptureHeightPx) {
       truncated = true;
       break;
     }
     await page.evaluate((scrollY) => window.scrollTo(0, scrollY), y);
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(150);
+    const height = await page.evaluate(() => document.body.scrollHeight);
+    // Stop once we've scrolled past the (possibly grown) bottom.
+    if (y + viewport.height >= height) {
+      // One more settle at the very bottom so the last section reveals/loads.
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(150);
+      break;
+    }
+    y += viewport.height;
   }
-  await page.evaluate(() => window.scrollTo(0, 0));
-  if (lastHeight >= CAPTURE_LIMITS.maxCaptureHeightPx) truncated = true;
 
-  // Bounded, best-effort font/critical-image readiness — never fatal; a slow
-  // web font or lazy image must not hang the capture.
+  // Safety net: force any element still hidden by a reveal-on-scroll animation
+  // (opacity:0 / translate / clip) into its visible resting state, so a section
+  // that never fired its IntersectionObserver still captures. Best-effort — an
+  // unknown reveal system just won't match and is left as-is.
+  await page.evaluate(() => {
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>("*"))) {
+      const s = getComputedStyle(el);
+      const hiddenByReveal =
+        (Number(s.opacity) === 0 || s.visibility === "hidden") &&
+        (s.transitionDuration !== "0s" || s.animationName !== "none");
+      if (hiddenByReveal) {
+        el.style.setProperty("opacity", "1", "important");
+        el.style.setProperty("visibility", "visible", "important");
+        el.style.setProperty("transform", "none", "important");
+        el.style.setProperty("clip-path", "none", "important");
+      }
+    }
+  });
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const finalHeight = await page.evaluate(() => document.body.scrollHeight);
+  if (finalHeight >= CAPTURE_LIMITS.maxCaptureHeightPx) truncated = true;
+
+  // Bounded, best-effort readiness for fonts and ALL images (including the
+  // lazy ones we just scrolled into view — those are exactly the below-fold
+  // images that were rendering blank). Never fatal; a slow asset must not hang.
   await withTimeout(
     Promise.all([
       page.evaluate(() => document.fonts.ready),
       page.evaluate(() =>
         Promise.all(
           [...document.images]
-            .filter((img) => img.loading !== "lazy" && !img.complete)
+            .filter((img) => !img.complete)
             .map(
               (img) =>
                 new Promise<void>((resolve) => {
@@ -137,6 +164,13 @@ export async function capture(
     "font/critical-image readiness",
   ).catch(() => {
     /* readiness is best-effort — proceed to the settle + screenshot anyway */
+  });
+
+  // Now freeze animations for a crisp, non-flickering final frame — after the
+  // content has been revealed, not before.
+  await page.addStyleTag({
+    content:
+      "*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }",
   });
   await page.waitForTimeout(CAPTURE_LIMITS.finalSettleMs);
 

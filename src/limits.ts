@@ -11,8 +11,10 @@ export const TIMEOUTS_MS = Object.freeze({
 });
 
 export const CAPTURE_LIMITS = Object.freeze({
-  maxScrollSteps: 30,
-  stableStepsToStop: 2,
+  // Enough viewport-height steps to walk a tall page all the way to the height
+  // cap (50000px / ~800px viewport ≈ 63) without stopping early. The loop exits
+  // as soon as it reaches the real bottom, so most pages use far fewer.
+  maxScrollSteps: 80,
   maxCaptureHeightPx: 50_000,
   finalSettleMs: 500,
 });
