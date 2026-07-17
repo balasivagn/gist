@@ -105,14 +105,18 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
         const headUrl = joinUrl(targets.headUrl, route);
         log(`  capture ${route} @ ${viewport.name}`);
 
-        const [baseOutcome, headOutcome] = await Promise.allSettled([
-          captureWithRetry(context, baseUrl, {
-            extraHeaders: config.extraHeaders,
-          }),
-          captureWithRetry(context, headUrl, {
-            extraHeaders: config.extraHeaders,
-          }),
-        ]);
+        // Capture base and head SEQUENTIALLY, not concurrently. Two pages
+        // loading the same animated route at the same instant settle at
+        // slightly different animation/scroll states, which shows up as a
+        // phantom diff (a false "unexpected change") on identical content.
+        // Determinism is the whole point, so we trade a little wall-clock for
+        // it — a local run only captures a handful of routes.
+        const baseOutcome = await Promise.allSettled([
+          captureWithRetry(context, baseUrl, { extraHeaders: config.extraHeaders }),
+        ]).then((r) => r[0]!);
+        const headOutcome = await Promise.allSettled([
+          captureWithRetry(context, headUrl, { extraHeaders: config.extraHeaders }),
+        ]).then((r) => r[0]!);
 
         const infra = [baseOutcome, headOutcome].find(
           (o) => o.status === "rejected" && o.reason instanceof InfraCaptureError,
