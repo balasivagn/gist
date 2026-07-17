@@ -8,7 +8,8 @@
   ],
   "type": "module",
   "bin": {
-    "gist": "bin/gist.mjs"
+    "gist": "bin/gist.mjs",
+    "gist-import-balanceflo": "bin/import-balanceflo.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -16,7 +17,7 @@
   "scripts": {
     "test": "node --test",
     "test:report": "node --test test/report.test.mjs",
-    "typecheck": "node --check bin/gist.mjs && node --check src/budgets.mjs && node --check src/identity.mjs && node --check src/report.mjs && node --check src/enrichment.mjs && node --check src/ingest.mjs && node --check src/publisher.mjs && node --check src/webhook.mjs",
+    "typecheck": "node --check bin/gist.mjs && node --check bin/import-balanceflo.mjs && node --check src/balanceflo-import.mjs && node --check src/budgets.mjs && node --check src/identity.mjs && node --check src/report.mjs && node --check src/enrichment.mjs && node --check src/ingest.mjs && node --check src/publisher.mjs && node --check src/webhook.mjs",
     "build": "node bin/gist.mjs build --config demo/gist.config.json --evidence demo/evidence.json --out dist/demo"
   }
 }

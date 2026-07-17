@@ -41,7 +41,7 @@ const DEFAULT_CONFIG = {
   productionUrl: "https://example.com",
   preview: { provider: "cloudflare-pages" },
   publish: { baseUrl: "https://gist.app" },
-  limits: { maxPages: 50, maxCaptureHeightPx: 12000, maxArtifactBytes: 5000000 }
+  limits: { maxPages: 50, maxCaptureHeightPx: 12000, maxArtifactBytes: 50000000 }
 };
 
 async function initialize() {

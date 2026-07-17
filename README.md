@@ -24,6 +24,8 @@ npm run build
 The demo report is written to `dist/demo/index.html`. See
 [`demo/README.md`](demo/README.md) for the scenario. The normalized implementation spec
 and dependency-ordered ticket files live under [`.scratch/gist-mvp/`](.scratch/gist-mvp/).
+To run a real Balanceflo pull request through capture, evidence import, and the local
+Gist UI, follow [`setup.md`](setup.md).
 
 > **Where the engine actually lives:** the real QA engine that Gist reuses (capture, diff,
 > report, video, GitHub Actions, the R2 report portal) is in the separate **balanceflo-website**

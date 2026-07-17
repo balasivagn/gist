@@ -61,6 +61,12 @@ function summarize(pages) {
 }
 
 function deterministicCopy(counts, changedPages, globalChange) {
+  if (counts.broken > 0) {
+    return {
+      headline: `${counts.broken} ${counts.broken === 1 ? "page couldn’t" : "pages couldn’t"} be checked`,
+      summary: `This review is incomplete. ${counts.needsLook > 0 ? `${counts.needsLook} completed ${counts.needsLook === 1 ? "page also needs" : "pages also need"} a look.` : "Run the review again before approving."}`
+    };
+  }
   if (globalChange) {
     return {
       headline: "This update touches the whole site",

@@ -117,3 +117,22 @@ test("an unchanged evidence bundle reports that nothing visible changed without 
     { clearOutcome: true, noEmptyCounter: true, noNavigation: true }
   );
 });
+
+test("an incomplete review leads with pages that could not be checked", () => {
+  const pages = evidence.pages.map((page, index) => ({
+    ...page,
+    status: index < 2 ? "infra-error" : "pass",
+    diffRatio: 0
+  }));
+
+  const { html } = generateReport({ ...evidence, pages });
+
+  assert.deepEqual(
+    {
+      warningHeadline: html.includes("2 pages couldn’t be checked"),
+      honestSummary: html.includes("This review is incomplete"),
+      notClear: !html.includes("0 pages changed as planned")
+    },
+    { warningHeadline: true, honestSummary: true, notClear: true }
+  );
+});
