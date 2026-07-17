@@ -6,7 +6,7 @@ import { generateReport } from "./report.mjs";
 import { pullRequestRevision } from "./identity.mjs";
 
 const STATE_RANK = Object.freeze({ building: 0, "evidence-ready": 1, complete: 2 });
-function buildingReport(identity) {
+export function buildingReport(identity) {
   const status = {
     version: 1,
     state: "building",

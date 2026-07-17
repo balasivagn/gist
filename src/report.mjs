@@ -94,9 +94,20 @@ function comparison(page, index) {
   </div><button class="diff-toggle" type="button" data-diff-toggle aria-controls="${id}">Show before</button>`;
 }
 
+function fallbackCaption(page) {
+  switch (page.status) {
+    case "fail": return `${page.title} changed outside this update.`;
+    case "removed": return `${page.title} was removed.`;
+    case "infra-error": return `${page.title} could not be checked.`;
+    case "new": return `${page.title} is new.`;
+    case "expected-change": return `${page.title} changed as planned.`;
+    case "pass": return `${page.title} is unchanged.`;
+  }
+}
+
 function pageCard(page, index) {
   const presentation = STATUS_PRESENTATION[page.status];
-  const caption = page.caption || `${page.title} is ${presentation.label.toLowerCase()}.`;
+  const caption = page.caption || fallbackCaption(page);
   return `<article class="page-card" data-route="${escapeHtml(page.route)}">
     <div class="page-heading">
       <div><p class="eyebrow">${escapeHtml(page.route)}</p><h3>${escapeHtml(page.title)}</h3></div>
@@ -107,7 +118,7 @@ function pageCard(page, index) {
 }
 
 function slide(page, index) {
-  const caption = page.caption || `${page.title} is ${STATUS_PRESENTATION[page.status].label.toLowerCase()}.`;
+  const caption = page.caption || fallbackCaption(page);
   const image = page.previewImage
     ? `<img src="${escapeHtml(page.previewImage)}" alt="Preview of ${escapeHtml(page.title)}">`
     : `<div class="image-placeholder" role="img" aria-label="Preview unavailable for ${escapeHtml(page.title)}">Preview unavailable</div>`;

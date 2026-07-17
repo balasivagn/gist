@@ -121,6 +121,7 @@ test("an unchanged evidence bundle reports that nothing visible changed without 
 test("an incomplete review leads with pages that could not be checked", () => {
   const pages = evidence.pages.map((page, index) => ({
     ...page,
+    caption: undefined,
     status: index < 2 ? "infra-error" : "pass",
     diffRatio: 0
   }));
@@ -131,8 +132,9 @@ test("an incomplete review leads with pages that could not be checked", () => {
     {
       warningHeadline: html.includes("2 pages couldn’t be checked"),
       honestSummary: html.includes("This review is incomplete"),
+      grammaticalCaption: html.includes("Home could not be checked.") && !html.includes("is couldn't check"),
       notClear: !html.includes("0 pages changed as planned")
     },
-    { warningHeadline: true, honestSummary: true, notClear: true }
+    { warningHeadline: true, honestSummary: true, grammaticalCaption: true, notClear: true }
   );
 });
