@@ -11,6 +11,7 @@
  */
 import { runInit } from "../src/init.js";
 import { runCapture } from "../src/run.js";
+import { installSkill } from "../src/skill.js";
 import { startUi } from "../src/ui.js";
 
 function flag(name: string): string | undefined {
@@ -26,9 +27,10 @@ function listFlag(name: string): string[] | undefined {
 const USAGE = `gist — approve website changes without reading code
 
 Usage:
-  gist init                          install the browser and scaffold .gist/config.json
+  gist init                          install the browser, scaffold .gist/config.json, add the /gist skill
   gist run --pr <n> [options]        capture before/after screenshots, diff, write evidence
   gist ui [--port <p>]               serve the local review UI over .gist/
+  gist skill install                 (re)install the /gist skill into .claude/skills/
 
 Options for run:
   --pr <n>          pull request number (uses gh to resolve the preview URL)
@@ -46,6 +48,16 @@ async function main(): Promise<void> {
   switch (command) {
     case "init":
       await runInit(cwd);
+      await installSkill(cwd);
+      return;
+
+    case "skill":
+      if (process.argv[3] === "install") {
+        await installSkill(cwd);
+      } else {
+        process.stderr.write("Usage: gist skill install\n");
+        process.exitCode = 1;
+      }
       return;
 
     case "run": {
