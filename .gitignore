@@ -1,4 +1,5 @@
 dist/
+.gist/
 .data/
 .next/
 .local/
