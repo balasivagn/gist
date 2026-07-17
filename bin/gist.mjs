@@ -3,6 +3,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 import { buildEnrichedReport } from "../src/enrichment.mjs";
+import { uploadReport } from "../src/ingest.mjs";
+import { enforceReportBudgets } from "../src/budgets.mjs";
 
 function option(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -31,7 +33,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}
           GIST_TOKEN: \${{ secrets.GIST_TOKEN }}
-        run: npx @gist/review build --config gist.config.json --evidence .gist/evidence.json --out gist-report
+        run: npx @gist/review build --config gist.config.json --evidence .gist/evidence.json --out gist-report --publish
 `;
 
 const DEFAULT_CONFIG = {
@@ -39,7 +41,7 @@ const DEFAULT_CONFIG = {
   productionUrl: "https://example.com",
   preview: { provider: "cloudflare-pages" },
   publish: { baseUrl: "https://gist.app" },
-  limits: { maxPages: 50, maxCaptureHeightPx: 12000 }
+  limits: { maxPages: 50, maxCaptureHeightPx: 12000, maxArtifactBytes: 5000000 }
 };
 
 async function initialize() {
@@ -67,8 +69,19 @@ async function build() {
   const evidence = JSON.parse(await readFile(resolve(option("evidence")), "utf8"));
   const output = resolve(option("out"));
   const report = await buildEnrichedReport(evidence);
+  enforceReportBudgets({ evidence, html: report.html, limits: config.limits });
   await write(join(output, "index.html"), report.html);
   await write(join(output, "status.json"), `${JSON.stringify(report.status, null, 2)}\n`);
+  if (process.argv.includes("--publish")) {
+    const publication = await uploadReport({
+      baseUrl: config.publish.baseUrl,
+      token: process.env.GIST_TOKEN,
+      html: report.html,
+      status: report.status
+    });
+    process.stdout.write(`${publication.url}\n`);
+    return;
+  }
   process.stdout.write(`${output}\n`);
 }
 

@@ -9,6 +9,7 @@
   },
   "limits": {
     "maxPages": 50,
-    "maxCaptureHeightPx": 12000
+    "maxCaptureHeightPx": 12000,
+    "maxArtifactBytes": 5000000
   }
 }

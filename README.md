@@ -3,8 +3,8 @@
 > **Approve website changes without reading code.**
 
 Gist turns a website pull request into **one shareable link** a non-technical owner can
-understand in 30 seconds: a plain-English summary of what changed, an AI-directed
-walkthrough video, a before/after diff viewer, and high-level numbers
+understand in 30 seconds: a plain-English summary of what changed, a captioned
+walkthrough slideshow, a before/after diff viewer, and high-level numbers
 (pages changed / unexpected / broken).
 
 This folder is a **portable spec + ticket pack** extracted from a planning session.

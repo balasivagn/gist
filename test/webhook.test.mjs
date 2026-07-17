@@ -30,6 +30,7 @@ test("an invalid GitHub signature cannot create work or comments", async () => {
 test("a signed pull-request event queues one revision and upserts one report comment", async () => {
   const queued = new Map();
   const commentWrites = [];
+  const buildingReports = [];
   const boundaries = {
     jobs: {
       async enqueueOnce(key, job) {
@@ -40,6 +41,9 @@ test("a signed pull-request event queues one revision and upserts one report com
     },
     comments: {
       async upsert(comment) { commentWrites.push(comment); }
+    },
+    reports: {
+      async publishBuilding(identity) { buildingReports.push(identity); }
     }
   };
 
@@ -51,6 +55,7 @@ test("a signed pull-request event queues one revision and upserts one report com
       firstQueued: first.queued,
       redeliveryQueued: redelivery.queued,
       key: [...queued.keys()][0],
+      buildingPublished: buildingReports.length === 2 && buildingReports.every((identity) => identity.repository === "acme/site" && identity.pullRequest === 31),
       commentMarkerStable: commentWrites.length === 2 && commentWrites.every((comment) => comment.marker === "<!-- gist-report -->"),
       link: commentWrites[0].body.includes("https://gist.test/pr/acme/site/31")
     },
@@ -58,6 +63,7 @@ test("a signed pull-request event queues one revision and upserts one report com
       firstQueued: true,
       redeliveryQueued: false,
       key: "acme/site#31@abcdef123456",
+      buildingPublished: true,
       commentMarkerStable: true,
       link: true
     }

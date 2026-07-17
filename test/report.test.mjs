@@ -102,3 +102,18 @@ test("a site-wide update is explained as one change with extra pages collapsed",
     { headline: true, explanation: true, overflowCollapsed: true }
   );
 });
+
+test("an unchanged evidence bundle reports that nothing visible changed without empty navigation", () => {
+  const pages = evidence.pages.map((page) => ({ ...page, status: "pass", diffRatio: 0 }));
+
+  const { html } = generateReport({ ...evidence, pages });
+
+  assert.deepEqual(
+    {
+      clearOutcome: html.includes("0 pages changed as planned"),
+      noEmptyCounter: !html.includes("1 / 0"),
+      noNavigation: !html.includes("data-next aria-label")
+    },
+    { clearOutcome: true, noEmptyCounter: true, noNavigation: true }
+  );
+});

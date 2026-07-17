@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { pullRequestRevision } from "./identity.mjs";
 
 function unauthorized() {
   const error = new Error("Invalid GitHub webhook signature");
@@ -16,18 +17,17 @@ function verifySignature(rawBody, signature, secret) {
 
 const SUPPORTED_ACTIONS = new Set(["opened", "synchronize", "reopened", "ready_for_review"]);
 
-export async function handlePullRequestWebhook({ rawBody, signature, secret, reportBaseUrl, jobs, comments }) {
+export async function handlePullRequestWebhook({ rawBody, signature, secret, reportBaseUrl, jobs, comments, reports }) {
   if (!verifySignature(rawBody, signature, secret)) throw unauthorized();
   const event = JSON.parse(rawBody);
   if (!SUPPORTED_ACTIONS.has(event.action)) return { accepted: false, queued: false };
   const repository = event.repository?.full_name;
   const pullRequest = event.pull_request?.number;
   const headSha = event.pull_request?.head?.sha;
-  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository || "") || !Number.isInteger(pullRequest) || !/^[A-Fa-f0-9]{6,64}$/.test(headSha || "")) {
-    throw new TypeError("Pull-request webhook payload is missing a safe repository, number, or head revision");
-  }
-  const key = `${repository}#${pullRequest}@${headSha}`;
-  const job = { repository, pullRequest, headSha, title: event.pull_request.title };
+  const identity = pullRequestRevision({ repository, pullRequest, headSha }, "pullRequestEvent");
+  const key = `${identity.repository}#${identity.pullRequest}@${identity.headSha}`;
+  const job = { ...identity, title: event.pull_request.title };
+  await reports.publishBuilding(identity);
   const queued = await jobs.enqueueOnce(key, job);
   const link = `${String(reportBaseUrl).replace(/\/$/, "")}/pr/${repository}/${pullRequest}`;
   await comments.upsert({

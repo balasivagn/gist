@@ -1,22 +1,17 @@
 import { generateReport, validateEvidence } from "./report.mjs";
-
-function requireText(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new TypeError(`${field} must be a non-empty string`);
-  }
-}
+import { requireNonEmptyString } from "./identity.mjs";
 
 export function validateEnrichment(value, evidence) {
   if (!value || typeof value !== "object") throw new TypeError("AI enrichment must be an object");
-  requireText(value.headline, "AI headline");
-  requireText(value.summary, "AI summary");
+  requireNonEmptyString(value.headline, "AI headline");
+  requireNonEmptyString(value.summary, "AI summary");
   if (!Array.isArray(value.slides) || value.slides.length === 0) {
     throw new TypeError("AI slides must contain at least one slide");
   }
   const pages = new Map(evidence.pages.map((page) => [page.route, page]));
   const slides = value.slides.map((slide, index) => {
-    requireText(slide?.route, `AI slides[${index}].route`);
-    requireText(slide?.caption, `AI slides[${index}].caption`);
+    requireNonEmptyString(slide?.route, `AI slides[${index}].route`);
+    requireNonEmptyString(slide?.caption, `AI slides[${index}].caption`);
     const page = pages.get(slide.route);
     if (!page) throw new TypeError(`AI slide route ${slide.route} is not present in evidence`);
     return { ...page, caption: slide.caption };

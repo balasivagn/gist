@@ -3,23 +3,9 @@ import { join } from "node:path";
 
 import { buildEnrichedReport } from "./enrichment.mjs";
 import { generateReport } from "./report.mjs";
+import { pullRequestRevision } from "./identity.mjs";
 
 const STATE_RANK = Object.freeze({ building: 0, "evidence-ready": 1, complete: 2 });
-const SAFE_REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const SAFE_SHA = /^[A-Fa-f0-9]{6,64}$/;
-
-function validateIdentity(identity) {
-  if (!identity || !SAFE_REPOSITORY.test(identity.repository || "")) {
-    throw new TypeError("identity.repository must be an owner/repository name");
-  }
-  if (!Number.isInteger(identity.pullRequest) || identity.pullRequest < 1) {
-    throw new TypeError("identity.pullRequest must be a positive integer");
-  }
-  if (!SAFE_SHA.test(identity.headSha || "")) {
-    throw new TypeError("identity.headSha must be a hexadecimal revision");
-  }
-}
-
 function buildingReport(identity) {
   const status = {
     version: 1,
@@ -43,7 +29,7 @@ async function currentStatus(directory) {
 }
 
 export async function publishReport({ root, identity, state, evidence, ai }) {
-  validateIdentity(identity);
+  identity = pullRequestRevision(identity);
   if (!(state in STATE_RANK)) throw new TypeError("state must be building, evidence-ready, or complete");
   const [owner, repository] = identity.repository.split("/");
   const directory = join(root, "pr", owner, repository, String(identity.pullRequest));

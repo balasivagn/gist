@@ -1,3 +1,5 @@
+import { pullRequestRevision, requireNonEmptyString } from "./identity.mjs";
+
 const STATUS_PRESENTATION = Object.freeze({
   fail: { label: "Changed — not part of this update", rank: 0, tone: "warning" },
   removed: { label: "Page removed", rank: 1, tone: "warning" },
@@ -16,12 +18,6 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new TypeError(`${field} must be a non-empty string`);
-  }
-}
-
 export function validateEvidence(evidence) {
   if (!evidence || typeof evidence !== "object") {
     throw new TypeError("evidence must be an object");
@@ -29,18 +25,14 @@ export function validateEvidence(evidence) {
   if (evidence.version !== 1) {
     throw new TypeError("evidence.version must be 1");
   }
-  requireString(evidence.repository, "evidence.repository");
-  if (!evidence.pullRequest || !Number.isInteger(evidence.pullRequest.number)) {
-    throw new TypeError("evidence.pullRequest.number must be an integer");
-  }
-  requireString(evidence.pullRequest.title, "evidence.pullRequest.title");
-  requireString(evidence.pullRequest.headSha, "evidence.pullRequest.headSha");
+  pullRequestRevision({ repository: evidence.repository, pullRequest: evidence.pullRequest?.number, headSha: evidence.pullRequest?.headSha }, "evidence");
+  requireNonEmptyString(evidence.pullRequest.title, "evidence.pullRequest.title");
   if (!Array.isArray(evidence.pages) || evidence.pages.length === 0) {
     throw new TypeError("evidence.pages must contain at least one page");
   }
   for (const [index, page] of evidence.pages.entries()) {
-    requireString(page.route, `evidence.pages[${index}].route`);
-    requireString(page.title, `evidence.pages[${index}].title`);
+    requireNonEmptyString(page.route, `evidence.pages[${index}].route`);
+    requireNonEmptyString(page.title, `evidence.pages[${index}].title`);
     if (!STATUS_PRESENTATION[page.status]) {
       throw new TypeError(`evidence.pages[${index}].status is unsupported`);
     }
@@ -144,11 +136,14 @@ export function generateReport(rawEvidence, options = {}) {
   const primaryCards = globalChange ? changedPages.slice(0, 3) : changedPages;
   const overflowCards = globalChange ? changedPages.slice(3) : [];
   const cards = `${primaryCards.map(pageCard).join("")}${overflowCards.length > 0 ? `<details class="more-pages"><summary>Show ${overflowCards.length} more changed ${overflowCards.length === 1 ? "page" : "pages"}</summary>${overflowCards.map((page, index) => pageCard(page, index + 3)).join("")}</details>` : ""}`;
+  const walkthrough = slides.length > 0
+    ? `<section class="panel" data-walkthrough aria-labelledby="walkthrough-title"><h2 id="walkthrough-title">Walk through the change</h2>${slides.map(slide).join("")}<div class="slide-controls"><button type="button" data-prev aria-label="Previous changed page">←</button><span data-slide-count>1 / ${slides.length}</span><button type="button" data-next aria-label="Next changed page">→</button></div></section>`
+    : `<section class="panel"><h2>No visible page changes</h2><p>The captured pages match production.</p></section>`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(copy.headline)} · Gist</title><style>${STYLES}</style></head><body>
   <main><header><div class="brand">Gist</div><p class="meta">${escapeHtml(evidence.repository)} · Pull request #${evidence.pullRequest.number}</p></header>
     <section aria-labelledby="report-title"><p class="eyebrow">Website change review</p><h1 id="report-title">${escapeHtml(copy.headline)}</h1><p class="lede">${escapeHtml(copy.summary)}</p></section>
     <div class="chips" aria-label="Change totals"><div class="chip">${counts.changed}<span>changed</span></div><div class="chip">${counts.needsLook}<span>need a look</span></div><div class="chip">${counts.broken}<span>couldn't check</span></div></div>
-    <section class="panel" data-walkthrough aria-labelledby="walkthrough-title"><h2 id="walkthrough-title">Walk through the change</h2>${slides.map(slide).join("")}<div class="slide-controls"><button type="button" data-prev aria-label="Previous changed page">←</button><span data-slide-count>1 / ${slides.length}</span><button type="button" data-next aria-label="Next changed page">→</button></div></section>
+    ${walkthrough}
     <section aria-labelledby="pages-title" style="margin-top:2rem"><h2 id="pages-title">Pages to review</h2><div class="page-list">${cards}</div></section>
   </main><script>${SLIDES_SCRIPT}</script></body></html>`;
   return {
