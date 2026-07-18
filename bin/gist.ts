@@ -8,11 +8,11 @@
  *
  * The AI walkthrough is generated separately by the `/gist` skill inside your
  * coding agent, which reads .gist/**\/evidence.json and writes summary.md.
+ *
+ * Imports are lazy (dynamic import per command) so each subcommand only loads
+ * the modules it needs. gist ui never pays for Playwright; gist run never
+ * pays for the HTTP server.
  */
-import { runInit } from "../src/init.js";
-import { runCapture } from "../src/run.js";
-import { installSkill } from "../src/skill.js";
-import { startUi } from "../src/ui.js";
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -46,13 +46,17 @@ async function main(): Promise<void> {
   const command = process.argv[2];
 
   switch (command) {
-    case "init":
+    case "init": {
+      const { runInit } = await import("../src/init.js");
+      const { installSkill } = await import("../src/skill.js");
       await runInit(cwd);
       await installSkill(cwd);
       return;
+    }
 
     case "skill":
       if (process.argv[3] === "install") {
+        const { installSkill } = await import("../src/skill.js");
         await installSkill(cwd);
       } else {
         process.stderr.write("Usage: gist skill install\n");
@@ -67,6 +71,7 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         return;
       }
+      const { runCapture } = await import("../src/run.js");
       await runCapture({
         cwd,
         pr: Number(pr),
@@ -78,6 +83,7 @@ async function main(): Promise<void> {
     }
 
     case "ui": {
+      const { startUi } = await import("../src/ui.js");
       const port = flag("port");
       const { url } = await startUi({
         cwd,
