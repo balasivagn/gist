@@ -31,6 +31,7 @@ export interface ResolvedTargets {
 /** Preview-URL patterns for the common static hosts, most specific first. */
 const PREVIEW_PATTERNS: Array<{ source: string; re: RegExp }> = [
   { source: "cloudflare-pages", re: /https:\/\/[a-z0-9][a-z0-9-]*\.pages\.dev/gi },
+  { source: "cloudflare-workers", re: /https:\/\/[a-z0-9][a-z0-9.-]*\.workers\.dev/gi },
   { source: "vercel", re: /https:\/\/[a-z0-9-]+\.vercel\.app/gi },
   { source: "netlify", re: /https:\/\/[a-z0-9-]+--[a-z0-9-]+\.netlify\.app/gi },
 ];
