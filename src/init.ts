@@ -7,6 +7,7 @@
 import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
 import { access, appendFile, readFile } from "node:fs/promises";
+import { createInterface } from "node:readline";
 import path from "node:path";
 import { promisify } from "node:util";
 import { chromium } from "playwright";
@@ -19,17 +20,38 @@ import {
 const exec = promisify(execFile);
 const require = createRequire(import.meta.url);
 
-const DEFAULT_CONFIG: GistConfig = {
-  version: 1,
-  productionUrl: "https://example.com",
-  viewports: [
-    { name: "desktop", width: 1440, height: 900 },
-    { name: "mobile", width: 390, height: 844 },
-  ],
-  routes: ["/"],
-  diffPercentThreshold: 0.5,
-  pixelThreshold: 0.1,
-};
+function makeDefaultConfig(productionUrl: string): GistConfig {
+  return {
+    version: 1,
+    productionUrl,
+    viewports: [
+      { name: "desktop", width: 1440, height: 900 },
+      { name: "mobile", width: 390, height: 844 },
+    ],
+    routes: ["/"],
+    diffPercentThreshold: 0.5,
+    pixelThreshold: 0.1,
+  };
+}
+
+/**
+ * Ask for the production URL interactively. Falls back to a placeholder when
+ * stdin is not a TTY (CI, piped input, etc.).
+ */
+async function promptProductionUrl(): Promise<string> {
+  if (!process.stdin.isTTY) return "https://example.com";
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(
+      "Production URL (the live site gist run will compare against): ",
+      (answer) => {
+        rl.close();
+        const trimmed = answer.trim();
+        resolve(trimmed || "https://example.com");
+      },
+    );
+  });
+}
 
 /** True once Chromium is already installed (skips the download). */
 async function chromiumInstalled(): Promise<boolean> {
@@ -99,8 +121,10 @@ export async function runInit(
   if (await configExists(cwd)) {
     log(".gist/config.json already exists — leaving it untouched.");
   } else {
-    await writeConfig(cwd, DEFAULT_CONFIG);
-    log("Wrote starter .gist/config.json — edit productionUrl and routes.");
+    const productionUrl = await promptProductionUrl();
+    await writeConfig(cwd, makeDefaultConfig(productionUrl));
+    log(`Wrote .gist/config.json with productionUrl: ${productionUrl}`);
+    log("Edit .gist/config.json to add routes and adjust viewports.");
     wroteConfig = true;
   }
 
