@@ -79,7 +79,22 @@ async function installChromium(log: (m: string) => void): Promise<void> {
   log("Chromium installed.");
 }
 
-/** Ensure `.gist/` is gitignored, so a run's screenshots never get committed. */
+const GITIGNORE_BLOCK = `\
+# gist-ignore-start
+# Ephemeral output and reproducible artefacts — do not commit.
+# .gist/config.json is the exception: it holds your team's shared routes,
+# viewports, and thresholds and SHOULD be committed.
+# Patterns are unanchored so they match .gist/ in nested workspaces (monorepos).
+.gist/prs/
+.gist/*.png
+.gist/config.local.json
+# gist-ignore-end`;
+
+/**
+ * Write the gist gitignore block into the project's .gitignore.
+ * Uses named markers so re-running init can detect it's already present.
+ * Ignores only ephemeral output — .gist/config.json stays tracked.
+ */
 async function ensureGitignore(
   cwd: string,
   log: (m: string) => void,
@@ -91,13 +106,10 @@ async function ensureGitignore(
   } catch {
     /* no .gitignore yet — we'll create it */
   }
-  const ignored = current
-    .split(/\r?\n/)
-    .some((line) => line.trim().replace(/\/$/, "") === ".gist");
-  if (ignored) return;
+  if (current.includes("gist-ignore-start")) return;
   const prefix = current === "" || current.endsWith("\n") ? "" : "\n";
-  await appendFile(file, `${prefix}.gist/\n`, "utf8");
-  log("Added .gist/ to .gitignore.");
+  await appendFile(file, `${prefix}${GITIGNORE_BLOCK}\n`, "utf8");
+  log("Added gist entries to .gitignore (ephemeral output only; config.json stays tracked).");
 }
 
 export interface InitResult {

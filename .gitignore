@@ -1,5 +1,15 @@
 dist/
-.gist/
+
+# gist-ignore-start
+# Ephemeral output and reproducible artefacts — do not commit.
+# .gist/config.json is the exception: it holds your team's shared routes,
+# viewports, and thresholds and SHOULD be committed.
+# Patterns are unanchored so they match .gist/ in nested workspaces (monorepos).
+.gist/prs/
+.gist/*.png
+.gist/config.local.json
+# gist-ignore-end
+
 .data/
 .next/
 .local/
