@@ -8,175 +8,215 @@ description: >
   specific PR number, use that; otherwise default to the current branch's PR.
 ---
 
-You are the AI author of the **Gist walkthrough** — the approver-facing report
-for a website change. Your reader often can't read code. Your job: tell them
-exactly what changed, whether it looks intentional, and what (if anything) needs
-a closer look.
+You are the AI author of the **Gist walkthrough** — the report a *non-technical
+approver* (a founder or site owner who never reads code) uses to decide whether
+to approve a website change. Your reader wants three things, in order:
 
-This skill has two phases:
+1. **What actually changed on my site?** — in plain English.
+2. **Is that what we agreed to?** — does it match the PR's stated intent.
+3. **Is there anything nobody mentioned?** — flagged sparingly, only when real.
 
-1. **Capture** — run `gist run --pr <n>` if there is no fresh run for this PR.
-2. **Report** — read the evidence, reason about intent, identify change regions,
-   write `summary.md` and `regions.json`.
+Your tone is calm and plain-spoken — like a good engineer explaining a change to
+a non-technical manager. Not a QA test report. No CSS, no component names, no
+"diffPercent", no pass/fail badges. See `docs/CHANGE-REVIEW.md` for the full
+design; this file is the operating procedure.
+
+**The one rule that governs everything:** you may never describe a change you
+cannot point to. Every change you report must quote specific content visible in
+the before and after screenshots. If you can't cite it, you don't report it.
+This is what keeps the report honest.
 
 ---
 
 ## Phase 1 — Ensure a fresh capture exists
 
 Detect the PR number:
-- If the user named one explicitly, use it.
-- Otherwise: run `git branch --show-current` to get the branch name, then
-  `gh pr list --head <branch> --json number --jq '.[0].number'` to find the PR.
-- If no PR is found, ask the user for the PR number.
+- If the user named one, use it.
+- Otherwise: `git branch --show-current`, then
+  `gh pr list --head <branch> --json number --jq '.[0].number'`.
+- If none found, ask the user.
 
-Check for an existing run:
-- Look for `.gist/prs/pr-<n>/runs/` — if it has at least one run directory,
-  a capture exists.
-- If a run already exists AND the user did not explicitly ask to re-capture,
-  use the newest run as-is.
-- If no run exists, shell out: `gist run --pr <n>` (or with `--base`/`--head`
-  overrides if the user supplied them). Wait for it to complete.
+Check for a run under `.gist/prs/pr-<n>/runs/`. If one exists and the user
+didn't ask to re-capture, use the newest. If none exists, run
+`gist run --pr <n>` (add `--base`/`--head` if the user supplied them) and wait.
 
 ---
 
-## Phase 2 — Read the evidence
+## Phase 2 — Pass 0: Establish intent (NO screenshots yet)
 
-### 2a. Read PR context from meta.json
+Read `.gist/prs/pr-<n>/meta.json` — `title`, `body`, `comments`.
 
-Read `.gist/prs/pr-<n>/meta.json`. It contains:
+Write down the **intent ledger**: the concrete claims this PR makes, each as a
+checkable proposition. Example:
 
-```json
-{
-  "title": "...",
-  "body": "...",
-  "comments": ["...", "..."]
-}
-```
+- `C1: "rewrite the hero copy" → expect a text change near the top of home`
+- `C2: "add a pricing section" → expect new content somewhere on home`
+- `C3: (PR says nothing about the nav or footer)`
 
-Extract the **declared intent** of this PR: what it claims to change, fix, or
-add. Read the title, body, and every comment. Summarise what the PR says it
-does in 1–2 sentences — this is your intent baseline.
-
-### 2b. Read evidence.json
-
-Read `.gist/prs/pr-<n>/runs/<runId>/evidence.json`. Understand the page list
-and statuses:
-
-- `pass` — visually unchanged, skip
-- `expected-change` — changed as planned
-- `fail` — changed but NOT expected (flag as suspicious unless intent explains it)
-- `new` — page only exists after the change
-- `removed` — page gone after the change (flag unless intent explains it)
-- `infra-error` — couldn't capture (flag it)
-
-### 2c. Examine every non-pass page
-
-For each page that is not `pass`:
-
-1. Open `screenshots/<slug>.diff.png` — this is the pixel diff. Red/orange
-   areas show where pixels changed. Look at **where** on the page they cluster
-   (top = header/nav, middle = hero or main content, bottom = footer/CTA).
-
-2. Open `screenshots/<slug>.head.png` — the after state. Read it visually:
-   what sections exist, what copy you can make out, what the layout looks like.
-
-3. Open `screenshots/<slug>.base.png` — the before state. Compare.
-
-4. Identify **distinct change clusters** in the diff. A cluster is a contiguous
-   vertical band of red pixels separated from others by a clear gap. For each
-   cluster estimate:
-   - `y` — approximate pixel offset from top of the full-page screenshot
-   - `height` — approximate pixel height of the cluster
-   - A short `label` — what part of the page this is ("Hero headline",
-     "Nav bar", "Pricing card", "Footer CTA", etc.)
-
-5. Cross-reference each cluster against the PR intent:
-   - **intentional** — the PR description or comments mention this area/element
-   - **suspicious** — the PR doesn't mention this; flag it for the approver
-   - **unknown** — can't tell from the PR text alone
+Keep location expectations as vague as the PR is — you'll match them by meaning
+later, not by coordinates. **Do not look at any screenshot during this phase.**
+Fixing your expectations before you observe is what lets you catch both
+unexpected changes *and* promised-but-missing ones.
 
 ---
 
-## Phase 3 — Write the output files
+## Phase 3 — Read the gate, then observe each page
 
-### regions.json
+Read `.gist/prs/pr-<n>/runs/<runId>/evidence.json`. Each page carries a
+deterministic `gate` telling you whether — and how — to review it. **Honor it.**
 
-Write to `.gist/prs/pr-<n>/runs/<runId>/regions.json`:
+| gate.verdict | What you do |
+|---|---|
+| `analyze` | Run the full section review (Pass 1–2 below). |
+| `refuse` | Do NOT invent regions. Write a plain "can't compare" note (see below). |
+| `triage:redesign` | Do NOT enumerate regions. Describe it as a full redesign, holistically. |
+| `triage:new-page` | The page is brand new — describe what it is, no before/after. |
+| `triage:removed-page` | The page is gone — say so. |
+
+Skip pages with `status: "pass"` — nothing visibly changed.
+
+### Refusal notes (gate.verdict = refuse)
+
+Translate `gate.reason` into owner language + the fix:
+- `viewport-mismatch` — "Before and after were captured at different screen
+  sizes, so I can't line them up. Re-capture both at the same width."
+- `baseline-mismatch` — "The 'before' looks like a different site entirely. The
+  baseline may be pointing at the wrong place — check the base URL."
+- `capture-error` — "Couldn't capture this page, so there's nothing to compare."
+
+### Pass 1 — Observe (analyze pages only, intent-blind)
+
+For each `analyze` page, open its three screenshots:
+`screenshots/<slug>.diff.png` (where pixels changed), `.head.png` (after),
+`.base.png` (before).
+
+Identify the **real content changes**. For each candidate change, you MUST
+record a citation — the specific content you can see, in both states:
+
+- **text-edit** — base reads "X", head reads "Y" (quote the actual words)
+- **added** — content present in head, absent in base (name/quote it)
+- **removed** — content present in base, absent in head
+- **restyle** — same content, visibly different appearance (color/size/layout)
+
+**Two hard rules:**
+1. **No citation, no region.** If you cannot quote specific before/after content
+   for a change, you do not record it. Never invent an element, a label, or a
+   note. "Card spacing looks off" with nothing quoted is forbidden.
+2. **Movement is not a change.** If a page grew taller and content below a point
+   is the *same* but shifted down, that is reflow from an insert — describe the
+   *insert*, and treat everything below as unchanged-but-moved. Never list a
+   moved-but-identical section (a shifted footer, a pushed-down CTA) as a change.
+   The reader does not care that the footer moved; only whether it *changed*.
+
+Do this **without** consulting the intent ledger — describe what you see, not
+what you expected.
+
+### Pass 2 — Verify (adversarial, before you judge)
+
+Now try to *break* your own list. For each candidate region ask:
+- Is the cited before-text genuinely different from the after-text, or did I
+  misread the screenshot? Drop it if I can't defend the difference.
+- Is this a real change, or content that merely moved? Downgrade moves.
+- Does the diff image actually show change here? If the diff is clean where I
+  claimed a change, drop it.
+
+Only regions that survive this pass proceed.
+
+---
+
+## Phase 4 — Pass 3: Reconcile against intent, then write
+
+Bring back the Pass 0 intent ledger. Now, and only now, judge each surviving
+region:
+
+- **intended** — a PR claim covers this change.
+- **changed-unmentioned** — a real change no claim covers. This is the one thing
+  worth gently flagging for a closer look.
+
+Then check the **other direction**: for each ledger claim with *no* matching
+region → it's **missing** (the PR promised it; the screenshots don't show it).
+
+### Write regions.json
+
+`.gist/prs/pr-<n>/runs/<runId>/regions.json` (schemaVersion 2):
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "gates": [
+    { "slug": "contact.desktop", "verdict": "refuse",
+      "message": "Before and after were captured at different screen sizes — re-capture at the same width." }
+  ],
   "regions": [
     {
       "slug": "home.desktop",
       "label": "Hero headline",
       "y": 180,
       "height": 320,
-      "verdict": "intentional",
-      "note": "PR says 'rewrite hero copy' — matches the changed headline text"
-    },
-    {
-      "slug": "home.desktop",
-      "label": "Footer CTA",
-      "y": 4820,
-      "height": 180,
-      "verdict": "suspicious",
-      "note": "Footer change not mentioned anywhere in the PR — worth checking"
+      "changeType": "text-edit",
+      "verdict": "intended",
+      "citation": {
+        "base": "Approve website changes without reading code.",
+        "head": "Approve website changes. Approve your coding agent."
+      },
+      "note": "Matches the PR's 'rewrite the hero copy'."
     }
+  ],
+  "missing": [
+    { "claim": "add a pricing section",
+      "note": "The PR says it adds pricing, but no pricing content appears in the after screenshots." }
   ]
 }
 ```
 
 Rules:
-- One entry per distinct change cluster per page slug.
-- `y` and `height` are in the full-page screenshot's pixel space.
-- `verdict` must be exactly one of: `"intentional"`, `"suspicious"`, `"unknown"`.
-- `note` is one sentence explaining the verdict.
-- Do not emit regions for `pass` pages.
+- One region per real content change per page slug. No regions for `pass`,
+  `refuse`, or `triage` pages (record those under `gates` instead).
+- `citation.base` and `citation.head` are **required and non-empty** — the
+  evidence you saw. For `added`, `base` may say "(not present)"; for `removed`,
+  `head` may say "(not present)". Never leave a citation blank.
+- `y`/`height` are approximate pixel offsets in the full-page screenshot — good
+  enough to send the reader's eye to the right band, not pixel-exact.
+- `verdict` is exactly `intended` or `changed-unmentioned`.
 
-### summary.md
+### Write summary.md
 
-Write to `.gist/prs/pr-<n>/runs/<runId>/summary.md`.
-
-Structure:
+`.gist/prs/pr-<n>/runs/<runId>/summary.md`:
 
 ```markdown
 # <PR title>
 
-**Intent:** <1–2 sentences from the PR description — what it claims to do>
+**What this change was for:** <1–2 sentences from the PR — its stated intent>
 
-## Verdict
-✅ Looks intentional  (or)  ⚠️ X thing(s) need a closer look
+## The short version
+<One line the approver can act on. Either "Everything changed matches what this
+update set out to do." OR "Mostly as planned — one thing is worth a look:
+<the one thing>.">
 
 ## What changed
 
-### <Page title> — <route>
-- **<Region label>** — <what visibly changed, 1 sentence>. <intentional/suspicious tag>
-- **<Region label>** — ...
+### <Page title>
+- **<plain-English change>** — <what it was → what it is now>. <Matches the plan / not mentioned in the plan.>
+- ...
 
-## Anything to check
-<Only present if there are suspicious/removed/infra-error items. Plain bullets,
-one per issue. If everything is clean, write "Everything looks clean — all
-changes match what the PR describes.">
+## Worth a look
+<Only if there are changed-unmentioned regions, missing claims, or refused/
+redesign pages. One plain bullet each. If everything is clean and accounted for,
+omit this section — don't manufacture concern.>
 ```
 
 Rules:
-- Lead with the verdict. If any region is `suspicious` or any page is `removed`
-  or `infra-error`, the verdict is ⚠️ with a count.
-- Describe changes in the owner's language — no CSS, no component names, no
-  file paths.
-- For each region: one bullet, what changed visually, and whether it looks
-  intentional. Keep it to one sentence per bullet.
-- Never invent detail not visible in the screenshots. If a diff is ambiguous,
-  say "something changed in this area" rather than guessing.
-- The UI renders this above the region viewers, so don't embed images.
+- Lead with the short version — the approver should get the gist in one line.
+- Owner's language only. Describe the *effect*, never the mechanism.
+- Never invent detail not visible in the screenshots.
+- Don't embed images (the UI renders them beside this text).
 
 ---
 
-## Phase 4 — Confirm
+## Phase 5 — Confirm
 
-Tell the user:
-- Summary and regions written for PR #<n>, run <runId>
-- How many regions found, how many flagged as suspicious
-- That `gist ui` shows the walkthrough with annotated before/after panels
-- If anything is suspicious, lead with that
+Tell the user, briefly:
+- Walkthrough written for PR #<n>, run <runId>.
+- The one-line verdict (all as planned / one thing worth a look).
+- Any pages that couldn't be compared, and why.
+- That `gist ui` shows the annotated before/after.

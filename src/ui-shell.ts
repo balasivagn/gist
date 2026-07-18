@@ -64,6 +64,14 @@ export function renderShell(): string {
   .badge.warn { background: var(--amber-soft); color: var(--amber); }
   .badge.err  { background: var(--red-soft);   color: var(--red);   }
   .badge.muted{ background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+  /* Gate card — a page that couldn't be reviewed section-by-section */
+  .gate-card { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .gate-card .gate-msg { margin: .1rem 0 0; font-size: .85rem; color: var(--muted); line-height: 1.5; }
+  /* Citation — the evidence grounding a region */
+  .citation { padding: .5rem .75rem; background: var(--card); border-bottom: 1px solid var(--line); font-size: .78rem; display: flex; flex-direction: column; gap: .25rem; }
+  .citation .cite-k { display: inline-block; min-width: 3.2rem; font-weight: 700; color: var(--muted); text-transform: uppercase; font-size: .64rem; letter-spacing: .05em; }
+  .citation .cite-v { color: var(--ink); }
+  .region-header .ctype { font-size: .66rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; background: var(--bg); padding: .12rem .45rem; border-radius: 4px; border: 1px solid var(--line); }
   /* Region panels */
   .regions { padding: 1rem 1rem .5rem; display: flex; flex-direction: column; gap: 1.25rem; }
   .region { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
@@ -111,18 +119,41 @@ export function renderShell(): string {
 <aside><h1>gist<span class="dot">.</span></h1><div id="prs"></div></aside>
 <main id="main"><p class="empty">Loading…</p></main>
 <script>
+// Per-page factual status from the pixel pass. The *judgment* (as-planned vs
+// worth-a-look) lives in the regions; these badges just say "did pixels move".
 const STATUS = {
-  pass:              { label: "Unchanged",          badge: "muted", chip: "muted" },
-  "expected-change": { label: "Changed as planned", badge: "ok",    chip: "ok"   },
-  fail:              { label: "Unexpected change",   badge: "warn",  chip: "warn" },
-  new:               { label: "New page",            badge: "ok",    chip: "ok"   },
-  removed:           { label: "Page removed",        badge: "warn",  chip: "warn" },
-  "infra-error":     { label: "Couldn't check",      badge: "err",   chip: "warn" },
+  pass:              { label: "Unchanged",     badge: "muted", chip: "muted" },
+  "expected-change": { label: "Changed",       badge: "ok",    chip: "ok"   },
+  fail:              { label: "Changed",       badge: "ok",    chip: "ok"   },
+  new:               { label: "New page",      badge: "ok",    chip: "ok"   },
+  removed:           { label: "Page removed",  badge: "muted", chip: "muted" },
+  "infra-error":     { label: "Couldn't check", badge: "muted", chip: "muted" },
 };
 const VERDICT = {
-  intentional: { label: "Intentional", cls: "ok" },
-  suspicious:  { label: "Check this",  cls: "warn" },
-  unknown:     { label: "Unclear",     cls: "muted" },
+  intended:              { label: "As planned",   cls: "ok" },
+  "changed-unmentioned": { label: "Worth a look", cls: "warn" },
+};
+const CHANGE_TYPE = {
+  "text-edit": "Text change",
+  added:       "Added",
+  removed:     "Removed",
+  restyle:     "Restyled",
+};
+// Gate verdicts from evidence.json — pages that can't be reviewed section by
+// section. Rendered as a calm explanatory card, never an alarm.
+const GATE = {
+  refuse:                { label: "Couldn't compare", cls: "muted" },
+  "triage:redesign":     { label: "Full redesign",    cls: "muted" },
+  "triage:new-page":     { label: "New page",         cls: "ok"    },
+  "triage:removed-page": { label: "Page removed",     cls: "muted" },
+};
+const GATE_MESSAGE = {
+  "viewport-mismatch": "The before and after were captured at different screen sizes, so they can't be lined up. Re-capture both at the same width.",
+  "baseline-mismatch": "The ‘before’ looks like a different site entirely — the baseline may point at the wrong place. Check the base URL.",
+  "capture-error":     "This page couldn’t be captured, so there’s nothing to compare.",
+  "pervasive-change":  "Most of this page changed — it reads as a full redesign. Review it holistically using the before/after below rather than section by section.",
+  "page-added":        "This page is brand new — there’s no ‘before’ to compare against.",
+  "page-removed":      "This page was removed.",
 };
 let STATE = { prs: [] };
 let selected = null; // { pr, runId }
@@ -210,7 +241,6 @@ function renderMain() {
 
   const pages = e.pages.map(pg => {
     const st = STATUS[pg.status] ?? { label: pg.status, badge:"muted", chip:"muted" };
-    const pct = (pg.status==="pass"||pg.status==="fail"||pg.status==="expected-change") ? ' · '+pg.diffPercent+'% diff' : '';
     const baseUrl  = pg.screenshots.base ? '/shot/'+e.pullRequest+'/'+e.runId+'/'+pg.screenshots.base : null;
     const headUrl  = pg.screenshots.head ? '/shot/'+e.pullRequest+'/'+e.runId+'/'+pg.screenshots.head : null;
     const diffUrl  = pg.screenshots.diff ? '/shot/'+e.pullRequest+'/'+e.runId+'/'+pg.screenshots.diff : null;
@@ -218,19 +248,41 @@ function renderMain() {
     // Parse natural width from baseDims e.g. "1440x3655"
     const imgW = parseInt((pg.baseDims || pg.headDims || "1440x900").split(/[x×]/)[0]) || 1440;
 
+    // A page the deterministic gate refused or triaged: show a calm card that
+    // explains why, in owner language — never fabricated regions.
+    const gate = pg.gate || { verdict: "analyze", reason: "ok" };
+    let gateHtml = "";
+    if (gate.verdict && gate.verdict !== "analyze") {
+      const g = GATE[gate.verdict] || { label: gate.verdict, cls: "muted" };
+      const msg = GATE_MESSAGE[gate.reason] || "";
+      gateHtml = \`<div class="gate-card">
+        <span class="badge \${g.cls}">\${g.label}</span>
+        <p class="gate-msg">\${escapeHtml(msg)}</p>
+      </div>\`;
+    }
+
     const pageRegions = regionsBySlug[pg.slug] || [];
     let regionHtml = "";
     if (pageRegions.length > 0) {
       regionHtml = '<div class="regions">' + pageRegions.map(reg => {
-        const v = VERDICT[reg.verdict] ?? VERDICT.unknown;
+        const v = VERDICT[reg.verdict] || VERDICT["changed-unmentioned"];
+        const ctype = CHANGE_TYPE[reg.changeType] || "";
         const base = renderCrop(baseUrl, reg.y, reg.height, imgW, colW, reg.verdict);
         const head = renderCrop(headUrl, reg.y, reg.height, imgW, colW, reg.verdict);
+        const cite = reg.citation
+          ? \`<div class="citation">
+              <div><span class="cite-k">Before</span> <span class="cite-v">\${escapeHtml(reg.citation.base)}</span></div>
+              <div><span class="cite-k">After</span> <span class="cite-v">\${escapeHtml(reg.citation.head)}</span></div>
+            </div>\`
+          : "";
         return \`<div class="region">
           <div class="region-header">
             <span class="badge \${v.cls}">\${v.label}</span>
             <span class="rlabel">\${escapeHtml(reg.label)}</span>
+            \${ctype ? '<span class="ctype">'+ctype+'</span>' : ''}
             <span class="rnote">\${escapeHtml(reg.note)}</span>
           </div>
+          \${cite}
           <div class="region-cols">
             <figure class="region-col"><figcaption>Before</figcaption>\${base}</figure>
             <figure class="region-col"><figcaption>After</figcaption>\${head}</figure>
@@ -257,18 +309,32 @@ function renderMain() {
       + '<span class="route">'+escapeHtml(pg.route)+' @ '+escapeHtml(pg.viewport)+pct+'</span>'
       + '<span class="badge '+st.badge+'">'+st.label+'</span>'
       + '</header>'
+      + gateHtml
       + (pageRegions.length > 0 ? regionHtml : "")
       + fullPage
       + '</div>';
   }).join("");
 
+  // Prefer the AI's judgment (regions) over the raw pixel buckets for the
+  // roll-up: "worth a look" = changed-unmentioned regions + missing claims.
+  const allRegions = run.regions?.regions ?? [];
+  const worthLook = allRegions.filter(r => r.verdict === "changed-unmentioned").length
+    + (run.regions?.missing?.length ?? 0);
+  const changedCount = allRegions.filter(r => r.verdict === "intended").length;
+  const cantCompare = e.pages.filter(p => p.gate && p.gate.verdict === "refuse").length;
+
+  // Fall back to deterministic buckets only when no AI regions exist yet.
+  const chips = run.regions
+    ? '<span class="chip">'+t.pages+' pages</span>'
+      + '<span class="chip ok">'+changedCount+' changed as planned</span>'
+      + (worthLook ? '<span class="chip warn">'+worthLook+' worth a look</span>' : '<span class="chip ok">nothing unexpected</span>')
+      + (cantCompare ? '<span class="chip muted">'+cantCompare+" couldn’t compare</span>" : '')
+    : '<span class="chip">'+t.pages+' pages</span>'
+      + '<span class="chip muted">'+t.changed+' changed</span>'
+      + '<span class="chip muted">run /gist for the walkthrough</span>';
+
   main.innerHTML = '<h2 class="run-title">'+escapeHtml(pr.meta?.title ?? ("PR #"+e.pullRequest))+'</h2>'
-    + '<div class="totals">'
-    + '<span class="chip">'+t.pages+' pages</span>'
-    + '<span class="chip ok">'+t.changed+' changed as planned</span>'
-    + '<span class="chip '+(t.unexpected?"warn":"muted")+'">'+t.unexpected+' unexpected</span>'
-    + '<span class="chip '+(t.broken?"warn":"muted")+'">'+t.broken+' broken</span>'
-    + '</div>' + summary + pages;
+    + '<div class="totals">' + chips + '</div>' + summary + pages;
 }
 
 document.addEventListener("click", (ev) => {

@@ -1,0 +1,18 @@
+{
+  "gate": "analyze",
+  "ledger": [
+    "rewrite hero headline"
+  ],
+  "regions": [
+    {
+      "area": "hero",
+      "changeType": "text-edit",
+      "verdict": "intended"
+    }
+  ],
+  "mustNotContain": [
+    "article cards",
+    "pricing",
+    "carousel"
+  ]
+}

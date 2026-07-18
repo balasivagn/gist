@@ -143,6 +143,11 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
             baseDims: "—",
             headDims: "—",
             truncated: false,
+            gate: {
+              verdict: "refuse",
+              reason: "capture-error",
+              signals: { diffPercent: 0, adjustedPercent: 0, shiftPx: 0, spread: 0, widthMatch: false },
+            },
             screenshots: { base: null, head: null, diff: null },
           });
           continue;
@@ -184,6 +189,7 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
           baseDims: result.baseDims,
           headDims: result.headDims,
           truncated: result.truncated,
+          gate: result.gate,
           screenshots: names,
         });
       }
@@ -235,6 +241,14 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
   log(
     `Totals: ${totals.changed} changed · ${totals.unexpected} unexpected · ${totals.broken} broken`,
   );
-  log("\nNext: run `/gist` in Claude Code to write the summary, then `gist ui` to review.");
+
+  // Surface any deterministic gate refusals up front — these block a useful
+  // AI review until the user fixes the cause (wrong viewport, wrong baseline).
+  const refused = pages.filter((p) => p.gate.verdict === "refuse");
+  for (const p of refused) {
+    log(`⚠ ${p.route} @ ${p.viewport}: can't compare (${p.gate.reason})`);
+  }
+
+  log("\nNext: run `/gist` in Claude Code to write the walkthrough, then `gist ui` to review.");
   return evidence;
 }

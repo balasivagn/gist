@@ -1,0 +1,18 @@
+{
+  "gate": "analyze",
+  "ledger": [
+    "add pricing section"
+  ],
+  "regions": [
+    {
+      "area": "pricing",
+      "changeType": "added",
+      "verdict": "intended"
+    }
+  ],
+  "mustNotContain": [
+    "footer changed",
+    "footer removed",
+    "article cards"
+  ]
+}
