@@ -19,7 +19,9 @@
   "scripts": {
     "gist": "tsx bin/gist.ts",
     "test": "tsx --test test/*.test.ts test/*.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "cp README.md README.repo.md && cp README.npm.md README.md",
+    "postpack": "mv README.repo.md README.md"
   },
   "dependencies": {
     "pixelmatch": "^7.2.0",
