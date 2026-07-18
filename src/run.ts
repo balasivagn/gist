@@ -223,6 +223,8 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
   await writePrMeta(opts.cwd, {
     number: targets.pr.number,
     title: targets.pr.title,
+    body: targets.pr.body,
+    comments: targets.pr.comments,
     headRefName: targets.pr.headRefName,
     baseRefName: targets.pr.baseRefName,
     repository: targets.pr.repository,

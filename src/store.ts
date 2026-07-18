@@ -74,6 +74,8 @@ export interface RunEvidence {
 export interface PrMetaFile {
   number: number;
   title: string;
+  body: string;
+  comments: string[];
   headRefName: string;
   baseRefName: string;
   repository: string;
@@ -197,6 +199,50 @@ export async function readSummary(
   const file = path.join(runDir(cwd, pr, runId), "summary.md");
   try {
     return await fs.readFile(file, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+export interface ChangeRegion {
+  slug: string;
+  label: string;
+  y: number;
+  height: number;
+  verdict: "intentional" | "suspicious" | "unknown";
+  note: string;
+}
+
+export interface RunRegions {
+  schemaVersion: 1;
+  regions: ChangeRegion[];
+}
+
+export async function writeRegions(
+  cwd: string,
+  pr: number,
+  runId: string,
+  regions: RunRegions,
+): Promise<void> {
+  const dir = runDir(cwd, pr, runId);
+  await fs.writeFile(
+    path.join(dir, "regions.json"),
+    `${JSON.stringify(regions, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+export async function readRegions(
+  cwd: string,
+  pr: number,
+  runId: string,
+): Promise<RunRegions | null> {
+  try {
+    const raw = await fs.readFile(
+      path.join(runDir(cwd, pr, runId), "regions.json"),
+      "utf8",
+    );
+    return JSON.parse(raw) as RunRegions;
   } catch {
     return null;
   }

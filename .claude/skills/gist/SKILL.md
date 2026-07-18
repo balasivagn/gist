@@ -1,62 +1,182 @@
 ---
 name: gist
-description: Turn a Gist capture run into a plain-English walkthrough for a non-technical approver. Use after `gist run` has written screenshots and evidence.json into .gist/, when the user wants the summary/walkthrough generated, or says "/gist", "summarize this PR's changes", or "write the Gist walkthrough".
+description: >
+  Generate or refresh the Gist walkthrough for a PR's visual changes. Invoke
+  when the user types /gist, "gist", "summarize this PR", "review changes",
+  "write the walkthrough", or "what changed on the site". Also invoke when a
+  gist run just completed and the user wants the summary. If the user names a
+  specific PR number, use that; otherwise default to the current branch's PR.
 ---
 
-You are writing the **approver-facing walkthrough** for a website change. The
-person who reads it often can't read a diff — your job is to tell them, in plain
-English, what changed and whether anything needs their attention.
+You are the AI author of the **Gist walkthrough** — the approver-facing report
+for a website change. Your reader often can't read code. Your job: tell them
+exactly what changed, whether it looks intentional, and what (if anything) needs
+a closer look.
 
-The deterministic capture (`gist run`) has already produced the evidence. You do
-**not** capture or diff anything — you read what's there and write `summary.md`
-next to it. This is the only non-deterministic, AI-authored part of Gist.
+This skill has two phases:
 
-## 1. Find the run
+1. **Capture** — run `gist run --pr <n>` if there is no fresh run for this PR.
+2. **Report** — read the evidence, reason about intent, identify change regions,
+   write `summary.md` and `regions.json`.
 
-The evidence lives under `.gist/prs/pr-<n>/runs/<runId>/`:
+---
 
-- `evidence.json` — the deterministic result (statuses, diff %, page list)
-- `screenshots/<slug>.base.png`, `.head.png`, `.diff.png` — before / after / diff
-- `summary.md` — what you will write (may not exist yet)
+## Phase 1 — Ensure a fresh capture exists
 
-Default to the **newest run of the most recently touched PR** unless the user
-names a PR or run. If several runs could be meant, ask which PR.
+Detect the PR number:
+- If the user named one explicitly, use it.
+- Otherwise: run `git branch --show-current` to get the branch name, then
+  `gh pr list --head <branch> --json number --jq '.[0].number'` to find the PR.
+- If no PR is found, ask the user for the PR number.
 
-## 2. Read the evidence, then look at the screenshots
+Check for an existing run:
+- Look for `.gist/prs/pr-<n>/runs/` — if it has at least one run directory,
+  a capture exists.
+- If a run already exists AND the user did not explicitly ask to re-capture,
+  use the newest run as-is.
+- If no run exists, shell out: `gist run --pr <n>` (or with `--base`/`--head`
+  overrides if the user supplied them). Wait for it to complete.
 
-Read `evidence.json` first. Each page has a `status`:
+---
 
-- `pass` — visually unchanged
-- `expected-change` — changed, and this route was expected to change
-- `fail` — changed, but this route was **not** expected to change (flag it)
-- `new` — page exists only after the change
-- `removed` — page existed before, gone after (flag it)
-- `infra-error` — couldn't be captured (say so; don't guess what it looks like)
+## Phase 2 — Read the evidence
 
-Then **actually open the `.head.png` and `.diff.png` images** for every page
-that isn't `pass`. Read the diff image to see *where* on the page it changed
-(header, hero, footer, a specific card). Describe what you can see — copy,
-layout, colour, spacing, an added/removed section — in words an owner
-understands. Never invent detail you can't see in the screenshot; if a diff is
-ambiguous, say it changed and where, not what you assume it means.
+### 2a. Read PR context from meta.json
 
-## 3. Write summary.md
+Read `.gist/prs/pr-<n>/meta.json`. It contains:
 
-Write to `.gist/prs/pr-<n>/runs/<runId>/summary.md`. Structure it as:
+```json
+{
+  "title": "...",
+  "body": "...",
+  "comments": ["...", "..."]
+}
+```
 
-1. **One-sentence headline** — what this change does, in the owner's language
-   (not "refactored the nav component" but "the top menu now shows a Pricing
-   link").
-2. **What changed** — a short bullet per meaningful page change, each naming the
-   page and what visibly differs. Lead with anything `fail` or `removed`.
-3. **Anything to check** — call out `fail`, `removed`, and `infra-error` pages
-   plainly. If everything is `pass` or `expected-change`, say it looks clean.
+Extract the **declared intent** of this PR: what it claims to change, fix, or
+add. Read the title, body, and every comment. Summarise what the PR says it
+does in 1–2 sentences — this is your intent baseline.
 
-Keep it to what a non-technical approver needs to decide **approve / take a
-look**. No code, no CSS, no file paths. Markdown only — the local `gist ui`
-renders it above the before/after images, so you don't need to embed images.
+### 2b. Read evidence.json
 
-## 4. Confirm
+Read `.gist/prs/pr-<n>/runs/<runId>/evidence.json`. Understand the page list
+and statuses:
 
-Tell the user the summary is written and remind them it appears in `gist ui`
-for that run. If you flagged unexpected or broken pages, lead with that.
+- `pass` — visually unchanged, skip
+- `expected-change` — changed as planned
+- `fail` — changed but NOT expected (flag as suspicious unless intent explains it)
+- `new` — page only exists after the change
+- `removed` — page gone after the change (flag unless intent explains it)
+- `infra-error` — couldn't capture (flag it)
+
+### 2c. Examine every non-pass page
+
+For each page that is not `pass`:
+
+1. Open `screenshots/<slug>.diff.png` — this is the pixel diff. Red/orange
+   areas show where pixels changed. Look at **where** on the page they cluster
+   (top = header/nav, middle = hero or main content, bottom = footer/CTA).
+
+2. Open `screenshots/<slug>.head.png` — the after state. Read it visually:
+   what sections exist, what copy you can make out, what the layout looks like.
+
+3. Open `screenshots/<slug>.base.png` — the before state. Compare.
+
+4. Identify **distinct change clusters** in the diff. A cluster is a contiguous
+   vertical band of red pixels separated from others by a clear gap. For each
+   cluster estimate:
+   - `y` — approximate pixel offset from top of the full-page screenshot
+   - `height` — approximate pixel height of the cluster
+   - A short `label` — what part of the page this is ("Hero headline",
+     "Nav bar", "Pricing card", "Footer CTA", etc.)
+
+5. Cross-reference each cluster against the PR intent:
+   - **intentional** — the PR description or comments mention this area/element
+   - **suspicious** — the PR doesn't mention this; flag it for the approver
+   - **unknown** — can't tell from the PR text alone
+
+---
+
+## Phase 3 — Write the output files
+
+### regions.json
+
+Write to `.gist/prs/pr-<n>/runs/<runId>/regions.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "regions": [
+    {
+      "slug": "home.desktop",
+      "label": "Hero headline",
+      "y": 180,
+      "height": 320,
+      "verdict": "intentional",
+      "note": "PR says 'rewrite hero copy' — matches the changed headline text"
+    },
+    {
+      "slug": "home.desktop",
+      "label": "Footer CTA",
+      "y": 4820,
+      "height": 180,
+      "verdict": "suspicious",
+      "note": "Footer change not mentioned anywhere in the PR — worth checking"
+    }
+  ]
+}
+```
+
+Rules:
+- One entry per distinct change cluster per page slug.
+- `y` and `height` are in the full-page screenshot's pixel space.
+- `verdict` must be exactly one of: `"intentional"`, `"suspicious"`, `"unknown"`.
+- `note` is one sentence explaining the verdict.
+- Do not emit regions for `pass` pages.
+
+### summary.md
+
+Write to `.gist/prs/pr-<n>/runs/<runId>/summary.md`.
+
+Structure:
+
+```markdown
+# <PR title>
+
+**Intent:** <1–2 sentences from the PR description — what it claims to do>
+
+## Verdict
+✅ Looks intentional  (or)  ⚠️ X thing(s) need a closer look
+
+## What changed
+
+### <Page title> — <route>
+- **<Region label>** — <what visibly changed, 1 sentence>. <intentional/suspicious tag>
+- **<Region label>** — ...
+
+## Anything to check
+<Only present if there are suspicious/removed/infra-error items. Plain bullets,
+one per issue. If everything is clean, write "Everything looks clean — all
+changes match what the PR describes.">
+```
+
+Rules:
+- Lead with the verdict. If any region is `suspicious` or any page is `removed`
+  or `infra-error`, the verdict is ⚠️ with a count.
+- Describe changes in the owner's language — no CSS, no component names, no
+  file paths.
+- For each region: one bullet, what changed visually, and whether it looks
+  intentional. Keep it to one sentence per bullet.
+- Never invent detail not visible in the screenshots. If a diff is ambiguous,
+  say "something changed in this area" rather than guessing.
+- The UI renders this above the region viewers, so don't embed images.
+
+---
+
+## Phase 4 — Confirm
+
+Tell the user:
+- Summary and regions written for PR #<n>, run <runId>
+- How many regions found, how many flagged as suspicious
+- That `gist ui` shows the walkthrough with annotated before/after panels
+- If anything is suspicious, lead with that

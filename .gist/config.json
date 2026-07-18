@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "productionUrl": "https://gist.masalageek.com",
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "routes": [
+    "/"
+  ],
+  "diffPercentThreshold": 0.5,
+  "pixelThreshold": 0.1
+}

@@ -15,6 +15,7 @@ import {
   listRuns,
   readEvidence,
   readPrMeta,
+  readRegions,
   readSummary,
   screenshotsDir,
 } from "./store.js";
@@ -31,7 +32,8 @@ async function collectState(cwd: string) {
       try {
         const evidence = await readEvidence(cwd, pr, runId);
         const summary = await readSummary(cwd, pr, runId);
-        runs.push({ evidence, summary });
+        const regions = await readRegions(cwd, pr, runId);
+        runs.push({ evidence, summary, regions });
       } catch {
         /* skip a half-written run */
       }
