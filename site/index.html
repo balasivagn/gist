@@ -56,8 +56,10 @@
   }
   nav.site a:hover { color: var(--ink); }
   nav.site a.gh { color: var(--ink); font-weight: 600; }
+  nav.site a.faq { color: var(--muted); }
 
   .hero { padding: 72px 0 40px; }
+  .wrap.hero { padding-left: 24px; padding-right: 24px; }
   .hero h1 {
     font-size: clamp(34px, 5.6vw, 56px);
     line-height: 1.08; letter-spacing: -0.03em; font-weight: 800;
@@ -85,6 +87,48 @@
   }
   .install a.btn:hover { border-color: var(--ink); }
   .hero .fine { margin-top: 14px; font-size: var(--text-sm); color: var(--muted); }
+
+  section.agent-setup-section {
+    margin-top: 72px; padding: 64px 0;
+    background: var(--card); border-block: 1px solid var(--line);
+  }
+  .agent-setup {
+    display: flex; align-items: center; justify-content: space-between; gap: 48px;
+  }
+  .agent-setup h2 { max-width: 18ch; }
+  .agent-setup-copy {
+    margin-top: 12px; max-width: 54ch; color: var(--muted); font-size: var(--text-base);
+  }
+  .agent-setup-action { flex: 0 0 auto; }
+  .prompt-copy {
+    padding: 12px 20px; display: inline-flex; align-items: center; gap: 10px;
+    border: 0; border-radius: 10px; overflow: hidden;
+    background: var(--term-bg); color: #f4f4ef;
+    font: inherit; cursor: pointer;
+    transition: background-color 160ms ease-out;
+  }
+  .agent-marks {
+    position: relative; width: 94px; height: 20px;
+    display: inline-flex; align-items: center; justify-content: flex-start; flex-shrink: 0;
+    color: #f4f4ef;
+  }
+  .agent-marks svg {
+    width: 20px; height: 20px; flex: 0 0 auto; margin-left: 4px;
+    transition: transform 300ms ease-out;
+  }
+  .agent-marks svg:first-child { margin-left: 0; transform: rotate(-6deg); }
+  .agent-marks svg:nth-child(4) { margin-left: 2px; transform: rotate(6deg); }
+  .prompt-copy:hover .agent-marks svg:first-child { transform: translateX(-4px) rotate(-12deg); }
+  .prompt-copy:hover .agent-marks svg:nth-child(2) { transform: translate(-1px, -1px) rotate(6deg) scale(1.1); }
+  .prompt-copy:hover .agent-marks svg:nth-child(3) { transform: translate(1px, 2px) rotate(-6deg) scale(1.1); }
+  .prompt-copy:hover .agent-marks svg:nth-child(4) { transform: translateX(4px) rotate(12deg); }
+  .prompt-copy-action {
+    display: inline-flex; align-items: center;
+    font-size: var(--text-base); font-weight: 700;
+  }
+  .prompt-copy:hover { background: #25252a; }
+  .prompt-copy:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+  .agent-setup-note { margin-top: 10px; color: var(--muted); font-size: var(--text-sm); }
 
   /* mock review card */
   .mock {
@@ -199,14 +243,82 @@
     display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
   }
   footer.site a { color: var(--muted); }
+  footer.site .contact { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* diagnostics + faq */
+  #faq { padding: 72px 0 0; }
+  #faq h2 { font-size: clamp(26px, 3.6vw, 34px); letter-spacing: -0.02em; line-height: 1.15; }
+  #faq > .wrap > p.sub { margin-top: 14px; color: var(--muted); max-width: 62ch; }
+
+  .diag-grid { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .diag {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px 20px;
+  }
+  .diag h3 {
+    font-family: var(--mono); font-size: var(--text-sm); font-weight: 600;
+    color: var(--ink); margin-bottom: 8px;
+  }
+  .diag p { font-size: var(--text-sm); color: var(--muted); line-height: 1.6; }
+  .diag p code {
+    font-family: var(--mono); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; color: var(--ink);
+  }
+
+  .faq-list { margin-top: 36px; display: grid; gap: 2px; }
+  .faq-item {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); overflow: hidden;
+  }
+  .faq-item + .faq-item { margin-top: -1px; border-radius: 0; }
+  .faq-item:first-child { border-radius: 10px 10px 0 0; }
+  .faq-item:last-child { border-radius: 0 0 10px 10px; }
+  .faq-item summary {
+    padding: 16px 20px; font-size: var(--text-base); font-weight: 600; cursor: pointer;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+    user-select: none;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: "+"; font-size: 18px; font-weight: 400; color: var(--muted); flex-shrink: 0;
+    transition: transform 0.18s ease;
+  }
+  .faq-item[open] summary::after { transform: rotate(45deg); }
+  .faq-item .ans {
+    padding: 0 20px 18px; font-size: var(--text-base); color: var(--muted);
+    line-height: 1.65; border-top: 1px solid var(--line); padding-top: 14px;
+  }
+  .faq-item .ans code {
+    font-family: var(--mono); font-size: var(--text-sm); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--ink);
+  }
+  .faq-item .ans strong { color: var(--ink); }
+
+  @media (max-width: 760px) {
+    .diag-grid { grid-template-columns: 1fr; }
+  }
 
   @media (max-width: 760px) {
     .steps, .parts { grid-template-columns: 1fr; }
     .principles { grid-template-columns: 1fr; }
     .hero { padding-top: 48px; }
+    nav.site a:not(.gh) { display: none; }
     section { padding-top: 56px; }
+    section.agent-setup-section { margin-top: 56px; padding: 44px 0; }
+    .agent-setup { align-items: flex-start; flex-direction: column; gap: 26px; }
+    .agent-setup-action, .prompt-copy { width: 100%; }
     .page-row { flex-wrap: wrap; gap: 6px 14px; }
     .page-row .note { flex-basis: 100%; order: 3; }
+    .prompt-copy-action { width: 100%; justify-content: center; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .prompt-copy, .agent-marks svg, .faq-item summary::after { transition: none; }
+    .prompt-copy:hover .agent-marks svg:first-child { transform: rotate(-6deg); }
+    .prompt-copy:hover .agent-marks svg:nth-child(2),
+    .prompt-copy:hover .agent-marks svg:nth-child(3) { transform: none; }
+    .prompt-copy:hover .agent-marks svg:nth-child(4) { transform: rotate(6deg); }
   }
 </style>
 </head>
@@ -219,6 +331,7 @@
       <a href="#how">How it works</a>
       <a href="#parts">Design</a>
       <a href="#why">Why</a>
+      <a href="#faq">FAQ</a>
       <a class="gh" href="https://github.com/balasivagn/gist" rel="noopener">GitHub&nbsp;→</a>
     </nav>
   </header>
@@ -276,6 +389,27 @@
     </div>
   </div>
 </div>
+
+<section class="agent-setup-section" id="agent-setup" aria-labelledby="agent-setup-title">
+  <div class="wrap agent-setup">
+    <div>
+      <h2 id="agent-setup-title">Set up Gist with your coding agent.</h2>
+      <p class="agent-setup-copy">Paste one verified instruction into Claude Code, Codex, Cursor, or the agent you already use. It can install Gist and configure the project for you.</p>
+    </div>
+    <div class="agent-setup-action">
+      <button class="prompt-copy" type="button" data-copy="Fetch https://gist.masalageek.com/prompt.md" aria-label="Copy the Gist setup prompt">
+        <span class="agent-marks" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" xmlns="http://www.w3.org/2000/svg"><path d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"></path></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" xmlns="http://www.w3.org/2000/svg"><path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path></svg>
+          <svg viewBox="82.65 82.65 634.71 634.71" fill="currentColor" fill-rule="evenodd" xmlns="http://www.w3.org/2000/svg"><path d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"></path><path d="M517.36 400H634.72V634.72H517.36Z"></path></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" xmlns="http://www.w3.org/2000/svg"><path d="M16 6H8v12h8V6zm4 16H4V2h16v20z"></path></svg>
+        </span>
+        <span class="prompt-copy-action" aria-live="polite">Copy prompt</span>
+      </button>
+      <p class="agent-setup-note">One instruction. Nothing runs until you paste it.</p>
+    </div>
+  </div>
+</section>
 
 <section id="how">
   <div class="wrap">
@@ -403,6 +537,67 @@
   </div>
 </section>
 
+<section id="faq">
+  <div class="wrap">
+    <h2>Common issues and questions.</h2>
+    <p class="sub">Quick answers for the most common setup bumps and questions about how Gist works.</p>
+
+    <div class="diag-grid">
+      <div class="diag">
+        <h3>Could not find a preview URL for PR #N</h3>
+        <p>Gist looks for <code>*.pages.dev</code>, <code>*.workers.dev</code>, <code>*.vercel.app</code>, or <code>*.netlify.app</code> URLs in the PR's deployment statuses and comments. For other hosts, pass it directly: <code>gist run --pr 42 --head https://my-preview.example.com</code></p>
+      </div>
+      <div class="diag">
+        <h3>browserType.launch: Executable doesn't exist</h3>
+        <p>The Playwright browser isn't installed yet. Run <code>gist init</code> once (separate from <code>npm install</code>) to download it. This only happens the first time.</p>
+      </div>
+      <div class="diag">
+        <h3>gh: command not found</h3>
+        <p>Gist uses the <a href="https://cli.github.com/" rel="noopener" style="color:inherit">GitHub CLI</a> to fetch PR metadata and preview URLs. Install it and run <code>gh auth login</code> once, or skip it entirely with explicit <code>--base</code> and <code>--head</code> flags.</p>
+      </div>
+      <div class="diag">
+        <h3>Diffs are all red / pages look totally different</h3>
+        <p>Usually a font, animation, or cookie banner that renders differently each run. Try raising <code>pixelThreshold</code> (0–1) in <code>.gist/config.json</code> to absorb anti-aliasing noise, or add <code>extraWaitMs</code> to let the page settle before capture.</p>
+      </div>
+      <div class="diag">
+        <h3>gist ui shows no PRs</h3>
+        <p>The UI reads <code>.gist/prs/</code>. Run <code>gist run</code> at least once from the same repo root where you're running <code>gist ui</code>.</p>
+      </div>
+      <div class="diag">
+        <h3>Could not resolve to a PullRequest</h3>
+        <p>The GitHub CLI is installed but not authenticated to this repo. Run <code>gh auth login</code>, or bypass it entirely with <code>--base</code> and <code>--head</code>.</p>
+      </div>
+    </div>
+
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Does Gist need an LLM to work?</summary>
+        <div class="ans">No. <code>gist run</code> and <code>gist ui</code> are fully deterministic and never call a model. The <code>/gist</code> skill is optional: without it, Gist is still a visual-diff tool with a local review UI.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Does Gist send my screenshots anywhere?</summary>
+        <div class="ans">Never. Everything stays in <code>.gist/</code> on your machine (gitignored by default). The AI step runs through your local Claude Code session, not an external API that Gist controls.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I use Gist without a GitHub PR?</summary>
+        <div class="ans">Yes. Pass <code>--base</code> and <code>--head</code> directly and use any integer as the PR number: <code>gist run --pr 0 --base https://prod.example.com --head https://staging.example.com</code></div>
+      </details>
+      <details class="faq-item">
+        <summary>Which hosting providers does auto-detection support?</summary>
+        <div class="ans">Cloudflare Pages (<code>*.pages.dev</code>), Cloudflare Workers (<code>*.workers.dev</code>), Vercel (<code>*.vercel.app</code>), and Netlify (<code>*--*.netlify.app</code>). For other hosts, pass <code>--head &lt;url&gt;</code>.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I run Gist in CI?</summary>
+        <div class="ans"><code>gist run</code> exits 0 and writes evidence to <code>.gist/</code>. Upload it as a workflow artifact or commit it. The UI and the <code>/gist</code> skill are optional downstream steps you can run locally afterward.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Does it work with non-React / non-Next.js sites?</summary>
+        <div class="ans">Yes. Gist captures any URL with Playwright: static HTML, SvelteKit, Astro, Rails, or whatever your stack is. It doesn't know or care what generated the page.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
 <div class="cta">
   <div class="wrap">
     <h2>Know what's going live.</h2>
@@ -416,9 +611,39 @@
 <div class="wrap">
   <footer class="site">
     <span>gist<span style="color:var(--green)">.</span> · approve website changes without reading code</span>
-    <span><a href="https://github.com/balasivagn/gist" rel="noopener">GitHub</a></span>
+    <div class="contact">
+      <a href="https://github.com/balasivagn/gist" rel="noopener">GitHub</a>
+      <a href="https://github.com/balasivagn/gist/issues" rel="noopener">Report a bug</a>
+      <a href="https://github.com/balasivagn/gist/discussions" rel="noopener">Discussions</a>
+    </div>
   </footer>
 </div>
+
+<script>
+  const copyButton = document.querySelector(".prompt-copy");
+  if (copyButton) {
+    copyButton.addEventListener("click", async () => {
+      const action = copyButton.querySelector(".prompt-copy-action");
+      const prompt = copyButton.dataset.copy || "";
+      try {
+        await navigator.clipboard.writeText(prompt);
+        action.textContent = "Copied";
+      } catch {
+        const field = document.createElement("textarea");
+        field.value = prompt;
+        field.setAttribute("readonly", "");
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand("copy");
+        field.remove();
+        action.textContent = "Copied";
+      }
+      window.setTimeout(() => { action.textContent = "Copy prompt"; }, 1800);
+    });
+  }
+</script>
 
 </body>
 </html>

@@ -119,6 +119,55 @@ Gist closes that understanding gap — a concrete instance of Geoffrey Litt's
 applied one layer up: not "help the engineer understand the code," but "help the
 approver understand the change."
 
+## Troubleshooting
+
+**`Could not find a preview URL for PR #N`**
+Gist looks for a `*.pages.dev`, `*.workers.dev`, `*.vercel.app`, or `*.netlify.app` URL in the PR's deployment statuses and comments. If your deploy posts a different domain, pass it directly:
+```sh
+gist run --pr 42 --head https://my-preview.example.com
+```
+
+**`browserType.launch: Executable doesn't exist`**
+Run `gist init` to install the Playwright browser (a one-time step, separate from `npm install`).
+
+**`gh: command not found` or `Could not resolve to a PullRequest`**
+Gist uses the [GitHub CLI](https://cli.github.com/) to fetch PR metadata and preview URLs. Install it and run `gh auth login` once, or skip it entirely with explicit `--base` / `--head` flags.
+
+**Diffs are all red / pages look completely different**
+Usually a font, animation, or cookie-consent overlay that renders differently on each run. Try raising `pixelThreshold` (0–1) in `.gist/config.json` to ignore anti-aliasing noise, or add `extraWaitMs` to let the page settle before capture.
+
+**`gist ui` shows no PRs**
+The UI reads `.gist/prs/`. Make sure you've run `gist run` at least once from the same repo root.
+
+## FAQ
+
+**Does Gist need an LLM to work?**
+No. `gist run` and `gist ui` are fully deterministic and never call a model. The `/gist` skill is optional — without it, Gist is still a visual-diff tool with a local review UI.
+
+**Does Gist send my screenshots anywhere?**
+Never. Everything stays in `.gist/` on your machine (gitignored by default). The AI step runs through your local Claude Code session, not an external API Gist controls.
+
+**Can I use Gist without a GitHub PR?**
+Yes. Pass `--base` and `--head` directly and use any integer as the PR number:
+```sh
+gist run --pr 0 --base https://prod.example.com --head https://staging.example.com
+```
+
+**Which hosting providers does auto-detection support?**
+Cloudflare Pages (`*.pages.dev`), Cloudflare Workers (`*.workers.dev`), Vercel (`*.vercel.app`), and Netlify (`*--*.netlify.app`). For other hosts, pass `--head <url>`.
+
+**Can I run Gist in CI?**
+Yes — `gist run` exits 0 and writes evidence to `.gist/`. You can upload it as an artifact or commit it. The UI and skill are optional downstream steps.
+
+**Does it work with non-React / non-Next.js sites?**
+Yes. Gist captures any URL with Playwright — static HTML, SvelteKit, Astro, Rails, whatever your stack is.
+
+## Contact
+
+Found a bug? [Open an issue on GitHub](https://github.com/balasivagn/gist/issues).
+
+Have a question or idea? [Start a GitHub Discussion](https://github.com/balasivagn/gist/discussions).
+
 ## Planning docs
 
 The original spec/ticket pack lives alongside this README:
