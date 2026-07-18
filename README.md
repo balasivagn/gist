@@ -89,8 +89,11 @@ gist ui           # http://127.0.0.1:4100
           screenshots/          # <slug>.base.png / .head.png / .diff.png
 ```
 
-It is gitignored. `evidence.json` is reproducible; `summary.md` is the
-re-runnable AI layer on top.
+**What to commit:** `.gist/config.json` holds your team's shared routes, viewports, and thresholds — commit it so every teammate gets the same capture settings.
+
+**What not to commit:** everything else (`prs/`, screenshots, `evidence.json`, `summary.md`). `gist init` writes a named `.gitignore` block that covers this automatically. If you're in a monorepo and `.gist/` sits under a nested workspace (e.g. `apps/web/.gist/`), the unanchored patterns in the block still match it.
+
+If a screenshot was committed before the block was added, run `git rm --cached .gist/prs/` to stop tracking it without deleting your local copy.
 
 ## The `/gist` skill
 
