@@ -213,10 +213,17 @@ Rules:
 
 ---
 
-## Phase 5 — Confirm
+## Phase 5 — Open the UI and confirm
 
-Tell the user, briefly:
+Open the review UI so the approver can see the annotated panels immediately:
+
+1. Check if `gist ui` is already running: `curl -s http://127.0.0.1:4100/api/state`
+2. If it responds, just open the browser: `open http://127.0.0.1:4100`
+3. If it doesn't respond, start it in the background first:
+   `gist ui --no-open &` then wait 2 seconds, then `open http://127.0.0.1:4100`
+
+Then tell the user, briefly:
 - Walkthrough written for PR #<n>, run <runId>.
 - The one-line verdict (all as planned / one thing worth a look).
 - Any pages that couldn't be compared, and why.
-- That `gist ui` shows the annotated before/after.
+- That the browser is now open to the review UI.
