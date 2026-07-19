@@ -7,12 +7,18 @@ import {
   listPrs,
   listRuns,
   readEvidence,
+  readPrMeta,
+  readRegions,
   readSummary,
   runIdFromDate,
   writeConfig,
+  writePrMeta,
+  writeRegions,
   writeRun,
   type GistConfig,
+  type PrMetaFile,
   type RunEvidence,
+  type RunRegions,
 } from "../src/store.js";
 
 const CONFIG: GistConfig = {
@@ -60,6 +66,73 @@ test("a written run round-trips through the store", async () => {
     const back = await readEvidence(cwd, 7, runId);
     assert.equal(back.pullRequest, 7);
     assert.equal(await readSummary(cwd, 7, runId), null);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("writePrMeta persists body and comments and reads back correctly", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "gist-store-"));
+  try {
+    const meta: PrMetaFile = {
+      number: 5,
+      title: "fix: hero copy",
+      body: "Rewrites the hero headline and removes the duplicate CTA.",
+      comments: ["LGTM", "Can you also update the og:title?"],
+      headRefName: "fix/hero-copy",
+      baseRefName: "main",
+      repository: "acme/site",
+      updatedAt: "2026-07-19T10:00:00.000Z",
+    };
+    await writePrMeta(cwd, meta);
+    const back = await readPrMeta(cwd, 5);
+    assert.equal(back?.title, "fix: hero copy");
+    assert.equal(back?.body, "Rewrites the hero headline and removes the duplicate CTA.");
+    assert.deepEqual(back?.comments, ["LGTM", "Can you also update the og:title?"]);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("writeRegions and readRegions round-trip correctly", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "gist-store-"));
+  try {
+    const runId = runIdFromDate("2026-07-19T10:00:00.000Z");
+    await writeRun(cwd, evidenceFor(3, runId), []);
+    const regions: RunRegions = {
+      schemaVersion: 2,
+      regions: [
+        {
+          slug: "home.desktop",
+          label: "Hero headline",
+          y: 200,
+          height: 300,
+          changeType: "text-edit",
+          verdict: "intended",
+          citation: { base: "Old headline", head: "New headline" },
+          note: "Matches PR claim to rewrite hero copy",
+        },
+      ],
+      missing: [],
+    };
+    await writeRegions(cwd, 3, runId, regions);
+    const back = await readRegions(cwd, 3, runId);
+    assert.equal(back?.regions.length, 1);
+    assert.equal(back?.regions[0]?.label, "Hero headline");
+    assert.equal(back?.regions[0]?.verdict, "intended");
+    assert.equal(back?.regions[0]?.citation.head, "New headline");
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test("readRegions returns null when no regions.json exists", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "gist-store-"));
+  try {
+    const runId = runIdFromDate("2026-07-19T10:00:00.000Z");
+    await writeRun(cwd, evidenceFor(3, runId), []);
+    const back = await readRegions(cwd, 3, runId);
+    assert.equal(back, null);
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }
