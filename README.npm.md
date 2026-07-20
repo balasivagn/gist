@@ -11,7 +11,7 @@ written by the coding agent you already have. No hosted service, no API keys.
 Node.js 22+.
 
 ```sh
-npm install -g @gist/review
+npm install -g @balasivagnanam/gist
 gist init
 ```
 

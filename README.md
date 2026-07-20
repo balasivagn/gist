@@ -34,7 +34,7 @@ Three parts, decoupled through a `.gist/` folder on disk:
 Node.js 22 or newer.
 
 ```sh
-npm install -g @gist/review   # fast — no browser download yet
+npm install -g @balasivagnanam/gist   # fast — no browser download yet
 gist init                     # installs the Playwright browser (one-time, ~150 MB)
                               # scaffolds .gist/config.json
                               # installs the /gist skill into .claude/skills/

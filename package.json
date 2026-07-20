@@ -1,5 +1,5 @@
 {
-  "name": "@gist/review",
+  "name": "@balasivagnanam/gist",
   "version": "0.3.0",
   "description": "Approve website changes without reading code — local before/after capture, diff, and an AI walkthrough via your coding agent.",
   "license": "MIT",
