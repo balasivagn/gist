@@ -2,7 +2,9 @@
 
 > **Approve website changes without reading code.**
 
-Gist turns a website pull request into a before/after visual review: deterministic screenshots of every page, a local diff UI, and a plain-English AI walkthrough through the coding agent you already have. No hosted service, no API keys.
+Gist turns a website pull request into a before/after visual review: deterministic
+screenshots of every page, a local diff UI, and a plain-English AI walkthrough
+written by the coding agent you already have. No hosted service, no API keys.
 
 ## Install
 
@@ -13,28 +15,34 @@ npm install -g @gist/review
 gist init
 ```
 
-`gist init` installs the Playwright browser (one-time, ~150 MB) and scaffolds `.gist/config.json`.
+`gist init` installs the Playwright browser (one-time, ~150 MB), scaffolds
+`.gist/config.json`, and installs the `/gist` skill into `.claude/skills/`.
 
 ## Use
 
 ```sh
 # 1. Edit .gist/config.json — set your production URL and routes
 
-# 2. Capture a PR (uses gh to find the preview URL automatically)
+# 2. Capture a PR (uses gh to find the preview URL automatically):
 gist run --pr 42
 
-# 3. Generate the plain-English walkthrough, inside Claude Code
-/gist
-
-# 4. Review it locally
-gist ui     # opens http://127.0.0.1:4100
+# 3. In Claude Code, run /gist — writes the walkthrough and opens the review UI
 ```
+
+That's it. The browser opens to `http://127.0.0.1:4100` with the full review:
+what changed, what looks intentional, and what's worth a closer look — with
+annotated before/after panels for every change region.
 
 ## How it works
 
-1. **`gist run`** — Playwright captures every configured route at every viewport on base (production) and head (PR preview), pixel-diffs them, writes screenshots + `evidence.json` into a gitignored `.gist/` folder.
-2. **`gist ui`** — local viewer: PRs → runs → before/after/diff per page. Never calls an LLM.
-3. **`/gist` skill** — inside Claude Code, reads the evidence and writes `summary.md` in language a non-technical approver can act on.
+1. **`gist run`** — Playwright captures every route at every viewport on base
+   (production) and head (PR preview), pixel-diffs them, writes screenshots +
+   `evidence.json` into a gitignored `.gist/` folder.
+2. **`/gist` skill** — inside Claude Code, reads the evidence + full PR
+   description, classifies each change as intentional or worth a look, writes
+   `summary.md` + `regions.json`, opens the review UI.
+3. **`gist ui`** — local viewer with annotated before/after panels per region.
+   Never calls an LLM.
 
 ## Full docs
 
