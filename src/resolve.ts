@@ -14,6 +14,8 @@ const exec = promisify(execFile);
 export interface PrMeta {
   number: number;
   title: string;
+  body: string;
+  comments: string[];
   headRefName: string;
   headSha: string;
   baseRefName: string;
@@ -56,6 +58,8 @@ async function localGitMeta(pr: number): Promise<PrMeta> {
   return {
     number: pr,
     title: `PR #${pr}`,
+    body: "",
+    comments: [],
     headRefName,
     headSha,
     baseRefName: "main",
@@ -76,14 +80,19 @@ export async function fetchPrMeta(pr: number): Promise<PrMeta> {
       "view",
       String(pr),
       "--json",
-      "number,title,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner",
+      "number,title,body,comments,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner",
     ]);
     const data = JSON.parse(raw);
     const owner = data.headRepositoryOwner?.login ?? "";
     const repo = data.headRepository?.name ?? "";
+    const comments: string[] = (data.comments ?? [])
+      .map((c: { body?: string }) => (c.body ?? "").trim())
+      .filter(Boolean);
     return {
       number: data.number,
       title: data.title ?? `PR #${data.number}`,
+      body: (data.body ?? "").trim(),
+      comments,
       headRefName: data.headRefName,
       headSha: data.headRefOid,
       baseRefName: data.baseRefName,

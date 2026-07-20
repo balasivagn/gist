@@ -1,0 +1,12 @@
+{
+  "gate": "analyze",
+  "ledger": [
+    "add pricing section"
+  ],
+  "missing": [
+    "pricing"
+  ],
+  "mustNotContain": [
+    "article cards"
+  ]
+}

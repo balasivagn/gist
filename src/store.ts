@@ -11,16 +11,18 @@
  *           <runId>/
  *             evidence.json       DETERMINISTIC — written by `gist run`
  *             summary.md          AI walkthrough — written by the /gist skill
+ *             regions.json        AI change regions + verdicts — /gist skill
  *             screenshots/
  *               <slug>.base.png  <slug>.head.png  <slug>.diff.png
  *
  * `gist run` writes screenshots + evidence.json (part 1, reproducible).
- * The /gist skill reads evidence.json and writes summary.md (part 3, AI).
+ * The /gist skill reads evidence.json and writes summary.md + regions.json
+ * (part 3, AI).
  * `gist ui` reads the whole tree (part 2). The directory is gitignored.
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { PageStatus } from "./diff.js";
+import type { DiffGate, PageStatus } from "./diff.js";
 
 export const GIST_DIR = ".gist";
 
@@ -52,6 +54,11 @@ export interface PageEvidence {
   baseDims: string;
   headDims: string;
   truncated: boolean;
+  /**
+   * Deterministic decision on whether the AI review pass should run for this
+   * page, and in which mode (analyze / refuse / triage). See docs/CHANGE-REVIEW.md.
+   */
+  gate: DiffGate;
   /** Screenshot filenames relative to the run's screenshots/ dir. */
   screenshots: { base: string | null; head: string | null; diff: string | null };
 }
@@ -74,6 +81,8 @@ export interface RunEvidence {
 export interface PrMetaFile {
   number: number;
   title: string;
+  body: string;
+  comments: string[];
   headRefName: string;
   baseRefName: string;
   repository: string;
@@ -197,6 +206,76 @@ export async function readSummary(
   const file = path.join(runDir(cwd, pr, runId), "summary.md");
   try {
     return await fs.readFile(file, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A single real content change on a page, as decided by the /gist skill's
+ * review SOP (docs/CHANGE-REVIEW.md §7). Movement/reflow is never a region.
+ *
+ * Every region MUST carry a citation — specific content the model can point to
+ * in both base and head (or "present in head, absent in base" for inserts).
+ * This is the "no citation, no region" rule (§9): a region without evidence is
+ * not allowed to exist, which is what prevents fabricated regions.
+ */
+export interface ChangeRegion {
+  slug: string;
+  label: string;
+  y: number;
+  height: number;
+  /** What kind of change this is. "moved" is never emitted as a region. */
+  changeType: "text-edit" | "added" | "removed" | "restyle";
+  /**
+   * intended            — matches a declared PR claim
+   * changed-unmentioned — a real change the PR never mentioned (worth a look)
+   * missing             — reserved; represented in `missing`, not here
+   */
+  verdict: "intended" | "changed-unmentioned";
+  /** The evidence grounding this region — required, never empty. */
+  citation: { base: string; head: string };
+  note: string;
+}
+
+export interface RunRegions {
+  schemaVersion: 2;
+  /**
+   * Per-page gate outcome the skill acted on, mirrored from evidence for the
+   * UI. When a page is refused or triaged, `regions` for it is empty and the
+   * reason explains why (in owner language, authored by the skill).
+   */
+  gates?: Array<{ slug: string; verdict: string; message: string }>;
+  regions: ChangeRegion[];
+  /** Declared PR claims with no matching region — the "missing" case (§7). */
+  missing?: Array<{ claim: string; note: string }>;
+}
+
+export async function writeRegions(
+  cwd: string,
+  pr: number,
+  runId: string,
+  regions: RunRegions,
+): Promise<void> {
+  const dir = runDir(cwd, pr, runId);
+  await fs.writeFile(
+    path.join(dir, "regions.json"),
+    `${JSON.stringify(regions, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+export async function readRegions(
+  cwd: string,
+  pr: number,
+  runId: string,
+): Promise<RunRegions | null> {
+  try {
+    const raw = await fs.readFile(
+      path.join(runDir(cwd, pr, runId), "regions.json"),
+      "utf8",
+    );
+    return JSON.parse(raw) as RunRegions;
   } catch {
     return null;
   }

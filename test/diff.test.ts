@@ -94,3 +94,93 @@ test("diffing with nothing on either side is a caller error", () => {
     }),
   );
 });
+
+// --- deterministic gate / triage (docs/CHANGE-REVIEW.md §5-6) ---
+
+/** A PNG with a horizontal band of `band` colour from y0..y1, else `bg`. */
+function banded(
+  width: number,
+  height: number,
+  bg: [number, number, number],
+  band: [number, number, number],
+  y0: number,
+  y1: number,
+): Buffer {
+  const png = new PNG({ width, height });
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const c = y >= y0 && y < y1 ? band : bg;
+      png.data[i] = c[0]; png.data[i + 1] = c[1]; png.data[i + 2] = c[2]; png.data[i + 3] = 255;
+    }
+  return PNG.sync.write(png);
+}
+
+test("a visually-unchanged page gates to analyze without computing signals", () => {
+  const shot = solid(40, 40, WHITE);
+  const r = diffScreenshots({
+    baseBuffer: shot,
+    headBuffer: solid(40, 40, WHITE),
+    diffPercentThreshold: 0.5,
+  });
+  assert.equal(r.status, "pass");
+  assert.equal(r.gate.verdict, "analyze");
+  assert.equal(r.gate.reason, "ok");
+});
+
+test("different capture widths gate to refuse (viewport-mismatch)", () => {
+  const r = diffScreenshots({
+    baseBuffer: solid(60, 40, WHITE),
+    headBuffer: solid(40, 40, RED),
+    diffPercentThreshold: 0.5,
+  });
+  assert.equal(r.gate.verdict, "refuse");
+  assert.equal(r.gate.reason, "viewport-mismatch");
+  assert.equal(r.gate.signals.widthMatch, false);
+});
+
+test("a localized band change gates to analyze, not redesign", () => {
+  // Same width; change confined to one band with everything else identical.
+  const base = banded(80, 600, WHITE, WHITE, 0, 0); // all white
+  const head = banded(80, 600, WHITE, RED, 120, 220); // one red band
+  const r = diffScreenshots({
+    baseBuffer: base,
+    headBuffer: head,
+    diffPercentThreshold: 0.5,
+  });
+  assert.equal(r.gate.verdict, "analyze");
+  assert.ok(r.gate.signals.spread < 0.6, "change is not spread across the page");
+});
+
+test("a whole-page change gates to triage:redesign", () => {
+  const base = banded(80, 600, WHITE, WHITE, 0, 0); // all white
+  const head = banded(80, 600, RED, RED, 0, 600); // entirely different
+  const r = diffScreenshots({
+    baseBuffer: base,
+    headBuffer: head,
+    diffPercentThreshold: 0.5,
+  });
+  assert.equal(r.gate.verdict, "triage:redesign");
+  assert.equal(r.gate.reason, "pervasive-change");
+  assert.ok(r.gate.signals.spread >= 0.6, "change is spread across the page");
+});
+
+test("a new page carries a triage:new-page gate", () => {
+  const r = diffScreenshots({
+    baseBuffer: null,
+    headBuffer: solid(40, 40, WHITE),
+    diffPercentThreshold: 0.5,
+  });
+  assert.equal(r.status, "new");
+  assert.equal(r.gate.verdict, "triage:new-page");
+});
+
+test("a removed page carries a triage:removed-page gate", () => {
+  const r = diffScreenshots({
+    baseBuffer: solid(40, 40, WHITE),
+    headBuffer: null,
+    diffPercentThreshold: 0.5,
+  });
+  assert.equal(r.status, "removed");
+  assert.equal(r.gate.verdict, "triage:removed-page");
+});
