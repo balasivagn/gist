@@ -23,6 +23,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { DiffGate, PageStatus } from "./diff.js";
+import type { SitemapMode } from "./sitemap.js";
 
 export const GIST_DIR = ".gist";
 
@@ -34,6 +35,15 @@ export interface GistConfig {
   viewports: Array<{ name: string; width: number; height: number }>;
   /** Routes to capture (relative paths). Empty = just "/". */
   routes: string[];
+  /**
+   * Discover routes from the site's sitemap. Discovery is ON by default; this
+   * only needs setting to change that. `true` (or omitted) derives the sitemap
+   * URL from `productionUrl` (tries `/sitemap-index.xml`, then `/sitemap.xml`);
+   * a string is an explicit sitemap URL; `false` disables discovery and uses
+   * the `routes` list. Any `routes` are merged on top of what the sitemap
+   * yields. Sites with no sitemap fall back to `routes` automatically.
+   */
+  sitemap?: SitemapMode;
   /** diffPercent above which a change is flagged. */
   diffPercentThreshold: number;
   /** pixelmatch per-pixel sensitivity (0..1). */

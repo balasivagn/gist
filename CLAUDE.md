@@ -84,6 +84,6 @@ Tests are fast and offline. Do not add tests that require a live URL or running 
 ## What to avoid
 
 - Do not import Playwright at the top level in files that are imported by `gist ui` or `gist skill install` — Playwright is only needed in the capture path.
-- Do not add any outbound network calls outside of `resolve.ts` (gh calls) and `capture.ts` (page fetches).
+- Do not add any outbound network calls outside of `resolve.ts` (gh calls), `capture.ts` (page fetches), and `sitemap.ts` (sitemap XML fetches for route discovery).
 - Do not write to `.gist/` from anywhere except `src/store.ts`, `src/run.ts`, and `src/skill.ts`.
 - Do not add a bundler or compile step to the user workflow — the `tsx` runtime is intentional.

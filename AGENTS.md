@@ -36,9 +36,12 @@ No build step. The CLI runs via `tsx` directly from source.
 - New CLI commands or flags
 - Changes to `.gist/` folder layout or `evidence.json` schema (breaking change for existing runs)
 - New runtime dependencies
-- Any outbound network call outside `resolve.ts` (gh) and `capture.ts` (page fetches)
+- Any outbound network call outside `resolve.ts` (gh), `capture.ts` (page fetches), and `sitemap.ts` (sitemap XML fetches for route discovery)
 
 Open a GitHub Discussion or issue before opening a PR for these.
+
+> The `sitemap.ts` network boundary and the `--sitemap` / `--no-sitemap` flags
+> were agreed in issue #4 (sitemap route discovery).
 
 ## Code conventions
 

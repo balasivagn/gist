@@ -136,7 +136,10 @@ export async function runInit(
     const productionUrl = await promptProductionUrl();
     await writeConfig(cwd, makeDefaultConfig(productionUrl));
     log(`Wrote .gist/config.json with productionUrl: ${productionUrl}`);
-    log("Edit .gist/config.json to add routes and adjust viewports.");
+    log(
+      "gist captures every page in your sitemap by default. No sitemap? It " +
+        "falls back to the `routes` list. Set \"sitemap\": false to always use routes.",
+    );
     wroteConfig = true;
   }
 

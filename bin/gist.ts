@@ -14,6 +14,8 @@
  * pays for the HTTP server.
  */
 
+import type { SitemapMode } from "../src/sitemap.js";
+
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i === -1 ? undefined : process.argv[i + 1];
@@ -37,6 +39,9 @@ Options for run:
   --base <url>      override the base/production URL
   --head <url>      override the head/preview URL
   --affected <a,b>  routes this PR is expected to change
+  --sitemap [url]   force sitemap discovery (on by default; bare = derive from
+                    the base URL, or pass an explicit sitemap URL)
+  --no-sitemap      skip sitemap discovery; capture only the configured routes
 
 After a run, generate the plain-English walkthrough with the /gist skill
 inside your coding agent.`;
@@ -72,12 +77,25 @@ async function main(): Promise<void> {
         return;
       }
       const { runCapture } = await import("../src/run.js");
+      // Sitemap discovery is on by default. --no-sitemap (or --sitemap false)
+      // turns it off; --sitemap <url> forces an explicit sitemap; bare
+      // --sitemap forces auto-derive. Absent → fall back to config / default.
+      const sitemapIdx = process.argv.indexOf("--sitemap");
+      let sitemap: SitemapMode | undefined;
+      if (process.argv.includes("--no-sitemap")) {
+        sitemap = false;
+      } else if (sitemapIdx !== -1) {
+        const next = process.argv[sitemapIdx + 1];
+        if (next === "false") sitemap = false;
+        else sitemap = next && !next.startsWith("--") ? next : true;
+      }
       await runCapture({
         cwd,
         pr: Number(pr),
         baseUrlOverride: flag("base"),
         headUrlOverride: flag("head"),
         affectedRoutes: listFlag("affected"),
+        sitemap,
       });
       return;
     }

@@ -10,6 +10,7 @@ import { captureWithRetry, InfraCaptureError } from "./capture.js";
 import { diffScreenshots, type PageStatus } from "./diff.js";
 import { preflight } from "./preflight.js";
 import { resolveTargets } from "./resolve.js";
+import { normalizeRoute, type SitemapMode } from "./sitemap.js";
 import {
   readConfig,
   runIdFromDate,
@@ -57,6 +58,9 @@ export interface RunOptions {
   headUrlOverride?: string;
   /** Routes this PR is expected to change (become "expected-change" not "fail"). */
   affectedRoutes?: string[];
+  /** Override config.sitemap: true derives from the base URL, a string is an
+   * explicit sitemap URL, false disables discovery (use explicit routes). */
+  sitemap?: SitemapMode;
   log?: (m: string) => void;
 }
 
@@ -85,8 +89,59 @@ export async function runCapture(opts: RunOptions): Promise<RunEvidence> {
   log(`  base: ${targets.baseUrl}`);
   log(`  head: ${targets.headUrl}  (${targets.headSource})`);
 
-  const affected = new Set(opts.affectedRoutes ?? []);
-  const routes = config.routes.length > 0 ? config.routes : ["/"];
+  // Normalize every route through the SAME rule discovery uses, so "/about"
+  // and "/about/" can't survive as two entries — which would double-capture
+  // the page, collide on the screenshot slug, and make an affected route fail
+  // to match a discovered one.
+  const affected = new Set((opts.affectedRoutes ?? []).map(normalizeRoute));
+  const configRoutes = config.routes.map(normalizeRoute);
+  // Sitemap discovery is the default: unless it's explicitly turned off
+  // (--sitemap=false or "sitemap": false in config), gist tries to capture
+  // every page the site publishes. A CLI flag beats config; config beats the
+  // `true` default. Sites with no sitemap degrade to explicit routes.
+  const sitemap = opts.sitemap ?? config.sitemap ?? true;
+  const explicitRoutes = configRoutes.length > 0 ? configRoutes : ["/"];
+  let routes: string[];
+  if (sitemap === false) {
+    routes = explicitRoutes;
+  } else {
+    const { tryDiscoverRoutes } = await import("./sitemap.js");
+    // Discover from BOTH the base (production) and head (preview) sitemaps and
+    // union the results. A page the PR *adds* only exists in the head sitemap;
+    // discovering base-only would silently skip exactly the change we most want
+    // reviewed. A preview deploy's sitemap is often generated with the
+    // production base, so it lists production-canonical URLs — tell the head
+    // discovery to also accept the production host, or every entry is dropped.
+    const prodHost = new URL(targets.baseUrl).hostname;
+    const onNotice = (m: string): void => log(`  ${m}`);
+    const [baseResult, headResult] = await Promise.all([
+      tryDiscoverRoutes({ sitemap, baseUrl: targets.baseUrl, onNotice }),
+      targets.headUrl === targets.baseUrl
+        ? Promise.resolve({ routes: [] as string[], found: false })
+        : tryDiscoverRoutes({
+            sitemap,
+            baseUrl: targets.headUrl,
+            alsoAcceptHost: prodHost,
+            onNotice,
+          }),
+    ]);
+    const discovered = [...new Set([...baseResult.routes, ...headResult.routes])];
+    if (discovered.length > 0) {
+      // Merge explicit routes on top so a config can force-include a page the
+      // sitemap omits (drafts, noindex). Dedupe; sitemap order + extras. Both
+      // sides are already normalized, so the Set dedupe is exact.
+      routes = [...new Set([...discovered, ...configRoutes])];
+      const added = headResult.routes.filter((r) => !baseResult.routes.includes(r));
+      const addedNote = added.length > 0 ? `, ${added.length} only in preview` : "";
+      log(`  sitemap: ${discovered.length} route(s) discovered${addedNote}`);
+    } else if (baseResult.found || headResult.found) {
+      log(`  ⚠ sitemap had no routes — using ${explicitRoutes.length} configured route(s)`);
+      routes = explicitRoutes;
+    } else {
+      log(`  no sitemap found — using ${explicitRoutes.length} configured route(s)`);
+      routes = explicitRoutes;
+    }
+  }
   const createdAt = new Date().toISOString();
   const runId = runIdFromDate(createdAt);
 

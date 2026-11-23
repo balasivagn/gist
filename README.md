@@ -66,7 +66,8 @@ Open `.gist/config.json` and point it at your site:
 |---|---|
 | `productionUrl` | The base/"before" URL captured for every PR |
 | `viewports` | Screen sizes to capture |
-| `routes` | Paths to capture (relative to each origin) |
+| `routes` | Paths to capture when sitemap discovery is off or finds nothing; also merged on top of discovered routes to force-include a page (drafts, noindex) |
+| `sitemap` | Route discovery from the site's sitemap — **on by default**, omit it. `true` derives the URL from `productionUrl` (tries `/sitemap-index.xml`, then `/sitemap.xml`); a string is an explicit sitemap URL; `false` disables discovery and uses `routes`. Sites with no sitemap fall back to `routes` automatically |
 | `diffPercentThreshold` | Diff % above which a page counts as changed |
 | `pixelThreshold` | pixelmatch per-pixel sensitivity (0–1) |
 | `extraHeaders` | Optional headers sent only to the captured origin (auth for gated previews) |
